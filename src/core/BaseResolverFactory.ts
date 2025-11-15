@@ -15,10 +15,10 @@ import {
   assertSafeIntegerInRangeInclusive
 } from "./AssertUtils";
 
-const createBaseResolver = (
+function createBaseResolver(
   rules: NonEmptyReadonlyArray<BaseRules>,
   { validate = true }: ValidateOptions = {}
-): BaseResolver => {
+): BaseResolver {
 
   if (validate) {
     rules.forEach((rule, i) => assertBaseRuleValid("createPartialBaseResolver", i, rule));
@@ -33,11 +33,11 @@ const createBaseResolver = (
   };
 }
 
-const createNamedBaseResolver = <const T extends NonEmptyReadonlyArray<string>>(
+function createNamedBaseResolver<const T extends NonEmptyReadonlyArray<string>>(
   order: T,
   rules: Record<T[number], BaseRules>,
   { validate = true }: ValidateOptions = {}
-): NamedBaseResolver<T> => {
+): NamedBaseResolver<T> {
 
   if (validate) for (const key of order) if (!(key in rules)) {
     throw new Error(`createNamedBaseResolver(): missing '${key}'`);
@@ -56,10 +56,10 @@ const createNamedBaseResolver = <const T extends NonEmptyReadonlyArray<string>>(
   };
 }
 
-const createPartialBaseResolver = (
+function createPartialBaseResolver(
   rules: Partial<Record<number, BaseRules>>,
   { validate = false }: ValidateOptions = {}
-): PartialBaseResolver => {
+): PartialBaseResolver {
 
   if (validate) {
     for (const [key, rule] of Object.entries(rules)) {
@@ -74,9 +74,9 @@ const createPartialBaseResolver = (
   };
 }
 
-const chainBaseResolvers = <T extends ReadonlyArray<string> = ReadonlyArray<string>>(
+function chainBaseResolvers<T extends ReadonlyArray<string> = ReadonlyArray<string>>(
   ...providers: NonEmptyReadonlyArray<AnyResolverInput<T>>
-): BaseResolver => {
+): BaseResolver {
 
   const resolvers: ReadonlyArray<BaseResolver | PartialBaseResolver> = providers.map(
     (p) => (typeof p === "function" ? p : p.resolver) // Normalize all inputs to callables
@@ -90,10 +90,10 @@ const chainBaseResolvers = <T extends ReadonlyArray<string> = ReadonlyArray<stri
   };
 }
 
-const enforceBaseResolverLevels = (
+function enforceBaseResolverLevels(
   resolver: BaseResolver,
   expectedLevels: number
-): BaseResolver => {
+): BaseResolver {
 
   return (index, values) => {
     assertSafeIntegerInRangeInclusive(

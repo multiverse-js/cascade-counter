@@ -279,7 +279,9 @@ export class CascadeCounter {
   canPrev(options: MinOptions = {}): boolean {
     if (this.wrapPolicy !== CascadeCounter.NONE) return !this.isMin(options);
     if (this._allowNegativeTop) return true;
-    for (let i = 0; i < this.levels; i++) if (this._valuesView[i] !== 0) return true;
+    for (let i = 0; i < this.levels; i++) {
+      if (this._valuesView[i] !== 0) return true;
+    }
     return false;
   }
 
@@ -395,7 +397,9 @@ export class CascadeCounter {
   /** Current per-level maxima under present bases. Throws if unbounded top. */
   maxValuesNow(): ReadonlyArray<number> {
     if (this.wrapPolicy === CascadeCounter.NONE) {
-      throw new Error(`maxValuesNow(): unavailable when top is unbounded (wrapPolicy='${CascadeCounter.NONE}')`);
+      throw new Error(
+        `maxValuesNow(): unavailable when top is unbounded (wrapPolicy='${CascadeCounter.NONE}')`
+      );
     }
     const fixedBases = this.#fixedBases;
     const out = new Array(this.levels);
@@ -818,7 +822,9 @@ export class CascadeCounter {
       const prev = multipliers[i - 1];
       const b = fixedBases[i - 1];
       if (prev > Number.MAX_SAFE_INTEGER / b) {
-        throw new RangeError("_multipliers(): product exceeds Number.MAX_SAFE_INTEGER; use BigInt variant");
+        throw new RangeError(
+          "_multipliers(): product exceeds Number.MAX_SAFE_INTEGER; use BigInt variant"
+        );
       }
       multipliers[i] = prev * b;
     }
