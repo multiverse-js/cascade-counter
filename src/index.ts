@@ -10,4 +10,7 @@ export type {
   NamedBaseResolver,
   PartialBaseResolver,
   BaseRules
-} from "./types";
+} from "./core/types";
+
+export * from "./space/Axis";
+export * from "./space/Distance";

@@ -1,5 +1,5 @@
 import { clampToRange, posMod, arraysEqual } from "./MiscUtils";
-import { WRAP_POLICY } from "../types";
+import { WRAP_POLICY } from "./types";
 
 import type {
   CascadeCounterOptions,
@@ -8,7 +8,7 @@ import type {
   IterateDirection,
   MinOptions,
   NonEmptyReadonlyArray
-} from "../types";
+} from "./types";
 
 import {
   assertSafeInteger,
@@ -39,6 +39,12 @@ import {
  * - State machines, index generators, and combinatorial counters
  */
 export class CascadeCounter {
+  // Re-export constants on the class for ergonomic, namespaced access
+  static WrapPolicy = WRAP_POLICY;
+  static NONE  = WRAP_POLICY.NONE;
+  static RESET = WRAP_POLICY.RESET;
+  static WRAP  = WRAP_POLICY.WRAP;
+
   private readonly getBase: BaseResolver;
   private readonly levels: number;
   private readonly _wrapPolicy: WrapPolicy;
@@ -92,14 +98,10 @@ export class CascadeCounter {
 
     if (levels != null) {
       assertSafePositiveInteger("_resolveConfig", "levels", levels);
-      if (initial) {
-        assertEquals("_resolveConfig", "initial.length", initial.length, levels);
-      }
+      if (initial) assertEquals("_resolveConfig", "initial.length", initial.length, levels);
       resolvedLevels = levels;
     } else {
-      if (!initial) {
-        throw new TypeError("_resolveConfig(): either 'levels' or 'initial' must be provided");
-      }
+      if (!initial) throw new TypeError("_resolveConfig(): either 'levels' or 'initial' must be provided");
       resolvedLevels = initial.length;
     }
     if (wrapPolicy !== CascadeCounter.NONE && allowNegativeTop) {
@@ -245,16 +247,12 @@ export class CascadeCounter {
   }
 
   next(steps = 1): this {
-    if (steps < 0) {
-      return this.prev(-steps);
-    }
+    if (steps < 0) return this.prev(-steps);
     return this._addAt(0, steps, "next");
   }
 
   prev(steps = 1): this {
-    if (steps < 0) {
-      return this.next(-steps);
-    }
+    if (steps < 0) return this.next(-steps);
     return this._addAt(0, -steps, "prev");
   }
 
@@ -279,8 +277,11 @@ export class CascadeCounter {
   canPrev(options: MinOptions = {}): boolean {
     if (this.wrapPolicy !== CascadeCounter.NONE) return !this.isMin(options);
     if (this._allowNegativeTop) return true;
+
     for (let i = 0; i < this.levels; i++) {
-      if (this._valuesView[i] !== 0) return true;
+      if (this._valuesView[i] !== 0) {
+        return true;
+      }
     }
     return false;
   }
@@ -382,14 +383,18 @@ export class CascadeCounter {
     const fixedBases = this.#fixedBases;
     if (fixedBases) {
       for (let i = 0; i < this.levels; i++) {
-        if (this._valuesView[i] !== fixedBases[i] - 1) return false;
+        if (this._valuesView[i] !== fixedBases[i] - 1) {
+          return false;
+        }
       }
       return true;
     }
     // Dynamic bases path
     for (let i = 0; i < this.levels; i++) {
       const base = this._getBaseAt(i, "isMax", this._valuesView);
-      if (this._valuesView[i] !== base - 1) return false;
+      if (this._valuesView[i] !== base - 1) {
+        return false;
+      }
     }
     return true;
   }
@@ -423,7 +428,12 @@ export class CascadeCounter {
    */
   isMin(options: MinOptions = {}): boolean {
     if (!options.zeroIsMin && this.wrapPolicy === CascadeCounter.NONE) return false;
-    for (let i = 0; i < this.levels; i++) if (this._valuesView[i] !== 0) return false;
+
+    for (let i = 0; i < this.levels; i++) {
+      if (this._valuesView[i] !== 0) {
+        return false;
+      }
+    }
     return true;
   }
 
@@ -483,8 +493,11 @@ export class CascadeCounter {
    */
   areValuesValid(values: ReadonlyArray<number>): boolean {
     if (values.length !== this.levels) return false;
+
     for (let i = 0; i < this.levels; i++) {
-      if (!this.isValueValid(values[i], i, values)) return false;
+      if (!this.isValueValid(values[i], i, values)) {
+        return false;
+      }
     }
     return true;
   }
@@ -504,8 +517,8 @@ export class CascadeCounter {
     values: ReadonlyArray<number> = this._valuesView
   ): boolean {
     this._assertValidLevel(index, "isValueValid");
-
     if (!Number.isSafeInteger(value)) return false;
+
     if (this.isBoundedLevel(index)) {
       const base = this._getBaseAt(index, "isValueValid", values);
       return value >= 0 && value < base;
@@ -598,13 +611,17 @@ export class CascadeCounter {
       for (let i = 0; i < steps; i++) {
         this.next(1);
         yield this.values;
-        if (shouldStopOnReset && this.isEmpty()) break;
+        if (shouldStopOnReset && this.isEmpty()) {
+          break;
+        }
       }
     } else {
       for (let i = 0; i < steps; i++) {
         this.prev(1);
         yield this.values; // fresh copy
-        if (shouldStopOnReset && this.isEmpty()) break; // yields reset state once, then exits
+        if (shouldStopOnReset && this.isEmpty()) {
+          break; // yields reset state once, then exits
+        }
       }
     }
   }
@@ -627,6 +644,13 @@ export class CascadeCounter {
 
   hasFixedBases(): boolean {
     return this.#fixedBases != null;
+  }
+
+  resolveBases(): ReadonlyArray<number> {
+    return Array.from(
+      { length: this.size },
+      (_, i) => this.getBaseAt(i)
+    );
   }
 
   totalStates(): number {
@@ -654,12 +678,6 @@ export class CascadeCounter {
       `(v${this.version}, wrapPolicy=${this.wrapPolicy}, allowNegativeTop=${this.allowNegativeTop})`;
   }
 
-  // Re-export constants on the class for ergonomic, namespaced access
-  static WrapPolicy = WRAP_POLICY; // PascalCase reads like an enum-ish namespace
-  static NONE  = WRAP_POLICY.NONE;
-  static RESET = WRAP_POLICY.RESET;
-  static WRAP  = WRAP_POLICY.WRAP;
-
   /**
    * Quick validation for fixed bases.
    * @returns `true` if every base is a positive integer (≥ 1) and the list is non-empty.
@@ -667,7 +685,9 @@ export class CascadeCounter {
   static areBasesValid(bases: ReadonlyArray<number>): boolean {
     if (!bases.length) return false;
     for (const base of bases) {
-      if (!CascadeCounter.isBaseValid(base)) return false;
+      if (!CascadeCounter.isBaseValid(base)) {
+        return false;
+      }
     }
     return true;
   }
@@ -694,7 +714,9 @@ export class CascadeCounter {
 
   static totalStatesBigInt(bases: ReadonlyArray<number>): bigint {
     let acc = 1n;
-    for (const b of bases) acc *= BigInt(b);
+    for (const b of bases) {
+      acc *= BigInt(b);
+    }
     return acc;
   }
 
@@ -839,9 +861,12 @@ export class CascadeCounter {
   ): SafePositiveInteger {
     const fixedBases = this.#fixedBases;
     // Use frozen reference if bases are fixed in order to bypass validity checks
-    if (fixedBases) return fixedBases[i] as SafePositiveInteger;
+    if (fixedBases) {
+      return fixedBases[i] as SafePositiveInteger;
+    }
     const base = this.getBase(i, values ?? this._valuesView);
     assertSafePositiveInteger(fn, "base", base);
+
     return base;
   }
 
@@ -851,7 +876,9 @@ export class CascadeCounter {
 
   private _assertAndGetFixedBases(fn = "_assertAndGetFixedBases"): ReadonlyArray<SafePositiveInteger> {
     const bases = this.#fixedBases;
-    if (!bases) throw new Error(`${fn}() requires fixed bases`);
+    if (!bases) {
+      throw new Error(`${fn}() requires fixed bases`);
+    }
     return bases;
   }
 

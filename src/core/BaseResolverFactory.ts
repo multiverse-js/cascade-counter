@@ -8,7 +8,7 @@ import type {
   NamedBaseResolver,
   AnyResolverInput,
   NonEmptyReadonlyArray
-} from "../types";
+} from "./types";
 
 import {
   assertBaseRuleValid,

@@ -1,5 +1,5 @@
 import { CascadeCounter } from "../core/Counter";
-import { incrementAxisClamped, decrementAxisClamped } from "../Space";
+import { incrementAxisClamped, decrementAxisClamped } from "../space/Axis";
 import process from "node:process";
 
 const WIDTH = 10;
