@@ -353,6 +353,8 @@ export function getBoundingBox(coords: Coord[]): { min: Coord; max: Coord } {
  */
 export function transformCoord(coord: Coord, matrix: readonly number[][]): Coord {
   const length = coord.length;
+  assertEquals("transformCoord", "matrix.length", matrix.length, length);
+
   const result = new Array(length).fill(0);
 
   for (let i = 0; i < length; i++) {
@@ -379,8 +381,8 @@ export function inBounds(coord: Coord, bounds: Coord): boolean {
  * Ensures that the transformed coordinate is within the bounds.
  */
 export function transformCoordWithBounds(
-  coord: Coord, 
-  matrix: readonly number[][], 
+  coord: Coord,
+  matrix: readonly number[][],
   bounds: ReadonlyArray<number>
 ): Coord | null {
   const newCoord = transformCoord(coord, matrix);

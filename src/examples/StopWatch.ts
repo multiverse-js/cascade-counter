@@ -66,7 +66,7 @@ function tick() {
   if (deltaMs > 0) {
     // Add elapsed milliseconds at level 0, letting CascadeCounter
     // handle all cascading (ms → sec → min → hours)
-    stopwatch.addAt(0, deltaMs);
+    stopwatch.incrementAt(0, deltaMs);
   }
 
   render();

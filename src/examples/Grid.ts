@@ -1,5 +1,4 @@
 import { CascadeCounter } from "../core/Counter";
-import { incrementAxisClamped, decrementAxisClamped } from "../space/Axis";
 import process from "node:process";
 
 const WIDTH = 10;
@@ -32,10 +31,10 @@ function printGrid() {
 
 // --- Helper functions ---
 
-function up() { decrementAxisClamped(grid, 1); }
-function down() { incrementAxisClamped(grid, 1); }
-function left() { decrementAxisClamped(grid, 0); }
-function right() { incrementAxisClamped(grid, 0); }
+function up() { grid.decrementAxisClamped(1, 1); }
+function down() { grid.incrementAxisClamped(1, 1); }
+function left() { grid.decrementAxisClamped(0, 1); }
+function right() { grid.incrementAxisClamped(0, 1); }
 
 // --- Keyboard input setup ---
 

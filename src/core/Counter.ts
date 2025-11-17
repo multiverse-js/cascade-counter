@@ -1,13 +1,18 @@
-import { clampToRange, posMod, arraysEqual } from "./MiscUtils";
+import {
+  clampToRange,
+  posMod,
+  arraysEqual
+} from "./MiscUtils";
+
 import { WRAP_POLICY } from "./types";
 
 import type {
   CascadeCounterOptions,
-  WrapPolicy,
   BaseResolver,
   IterateDirection,
   MinOptions,
-  NonEmptyReadonlyArray
+  NonEmptyReadonlyArray,
+  WrapPolicy
 } from "./types";
 
 import {
@@ -41,9 +46,9 @@ import {
 export class CascadeCounter {
   // Re-export constants on the class for ergonomic, namespaced access
   static WrapPolicy = WRAP_POLICY;
-  static NONE  = WRAP_POLICY.NONE;
+  static NONE = WRAP_POLICY.NONE;
   static RESET = WRAP_POLICY.RESET;
-  static WRAP  = WRAP_POLICY.WRAP;
+  static WRAP = WRAP_POLICY.WRAP;
 
   private readonly getBase: BaseResolver;
   private readonly levels: number;
@@ -132,128 +137,35 @@ export class CascadeCounter {
    * @param delta The amount to add (positive or negative, default `1`).
    * @returns `this` (mutates in place).
    */
-  addAt(startIndex = 0, delta = 1): this {
-    return this._addAt(startIndex, delta, "addAt");
+  incrementAt(startIndex = 0, delta = 1): this {
+    return this._incrementAt(startIndex, delta, "addAt");
   }
 
-  private _addAt(startIndex = 0, delta = 1, fn: string = "_addAt"): this {
-    if (delta === 0) return this;
-
-    this._assertValidLevel(startIndex, fn);
-    assertSafeInteger(fn, "delta", delta);
-
-    // Fast path: ±1 with no carry/borrow (any index)
-    if (delta === 1) {
-      const next = this._valuesView[startIndex] + 1;
-
-      if (this._isUnboundedTopDigit(startIndex)) {
-        // Unbounded top: no base check, just write
-        this._mutate((_, write) => write(startIndex, next));
-        return this;
-      } else {
-        const base = this._getBaseAt(startIndex, fn);
-        if (next < base) {
-          this._mutate((_, write) => write(startIndex, next));
-          return this;
-        }
-      }
-    } else if (delta === -1) {
-      const next = this._valuesView[startIndex] - 1;
-
-      if (this._isUnboundedTopDigit(startIndex)) {
-        // Unbounded top: allow negative only if configured
-        this._assertTopDigitNonNegative(next, "_addAt");
-        this._mutate((_, write) => write(startIndex, next));
-        return this;
-      }
-      // Bounded digit (inner digit or top when a `wrapPolicy` is used):
-      if (next >= 0) {
-        this._mutate((_, write) => write(startIndex, next));
-        return this;
-      }
-    }
-
-    // Slow path: Perform carry operations if needed
-    this._mutate((values, write) => {
-      let i = startIndex;
-      let pending = delta;
-
-      while (pending !== 0 && i < this.levels) {
-        const base = this._getBaseAt(i, "_mutate", values);
-        const next = values[i] + pending;
-
-        if (i < this.levels - 1) {
-          // computes a positive modulo in the range [0, base - 1], even for negative inputs.
-          const rem = posMod(next, base);
-          const carry = (next - rem) / base;
-          write(i, rem);
-          pending = carry;
-          i++;
-        } else {
-          if (this.wrapPolicy === CascadeCounter.RESET) {
-            if (next >= base || next < 0) {
-              for (let k = 0; k < this.levels; k++) write(k, 0);
-              return;
-            }
-            write(i, next); // in-range [0, base-1], so safe to assign
-          } else if (this.wrapPolicy === CascadeCounter.WRAP) {
-            const rem = posMod(next, base);
-            write(i, rem);
-          } else {
-            if (this._isUnboundedTopDigit(i)) {
-              this._assertTopDigitNonNegative(next, "_mutate");
-            }
-            write(i, next); // unbounded top level
-          }
-          pending = 0;
-        }
-      }
-    });
-
-    return this;
-  }
-
-  /** Subtracts `delta` from the digit at `startIndex`, cascading as needed. */
-  subAt(startIndex = 0, delta = 1): this {
-    return this._addAt(startIndex, -delta, "subAt");
+  /** Subtracts `steps` from the digit at `startIndex`, cascading as needed. */
+  decrementAt(startIndex = 0, steps = 1): this {
+    return this._incrementAt(startIndex, -steps, "subAt");
   }
 
   increment(steps = 1): this {
-    return this._addAt(0, steps, "increment");
+    return this._incrementAt(0, steps, "increment");
   }
 
   decrement(steps = 1): this {
-    return this._addAt(0, -steps, "decrement");
-  }
-
-  right(steps = 1): this {
-    return this._addAt(0, steps, "right");
-  }
-
-  left(steps = 1): this {
-    return this._addAt(0, -steps, "left");
-  }
-
-  // Requires this.levels >= 2
-  down(steps = 1): this {
-    this._assertMinLevels(2, "down");
-    return this._addAt(1, steps, "down");
-  }
-
-  // Requires this.levels >= 2
-  up(steps = 1): this {
-    this._assertMinLevels(2, "up");
-    return this._addAt(1, -steps, "up");
+    return this._incrementAt(0, -steps, "decrement");
   }
 
   next(steps = 1): this {
-    if (steps < 0) return this.prev(-steps);
-    return this._addAt(0, steps, "next");
+    if (steps < 0) {
+      return this.prev(-steps);
+    }
+    return this._incrementAt(0, steps, "next");
   }
 
   prev(steps = 1): this {
-    if (steps < 0) return this.next(-steps);
-    return this._addAt(0, -steps, "prev");
+    if (steps < 0) {
+      return this.next(-steps);
+    }
+    return this._incrementAt(0, -steps, "prev");
   }
 
   /** Resets all digits to zero. */
@@ -278,8 +190,10 @@ export class CascadeCounter {
     if (this.wrapPolicy !== CascadeCounter.NONE) return !this.isMin(options);
     if (this._allowNegativeTop) return true;
 
+    const values = this._valuesView;
+
     for (let i = 0; i < this.levels; i++) {
-      if (this._valuesView[i] !== 0) {
+      if (values[i] !== 0) {
         return true;
       }
     }
@@ -287,26 +201,103 @@ export class CascadeCounter {
   }
 
   /** getBase must be referentially transparent for a given values during a call. */
-  peekNextValues(): ReadonlyArray<number> | null { 
-    if (!this.canNext()) return null;
-    return this.clone().next().values;
+  peekNextValues(): ReadonlyArray<number> | null {
+    if (this.canNext()) {
+      return this.clone().next().values;
+    }
+    return null;
   }
 
-  peekPrevValues(): ReadonlyArray<number> | null { 
-    if (!this.canPrev()) return null;
-    return this.clone().prev().values;
+  peekPrevValues(): ReadonlyArray<number> | null {
+    if (this.canPrev()) {
+      return this.clone().prev().values;
+    }
+    return null;
   }
 
   tryNext(): boolean {
-    if (!this.canNext()) return false;
-    this.next();
-    return true;
+    if (this.canNext()) {
+      this.next();
+      return true;
+    }
+    return false;
   }
 
   tryPrev(options: MinOptions = {}): boolean {
-    if (!this.canPrev(options)) return false;
-    this.prev();
-    return true;
+    if (this.canPrev()) {
+      this.prev();
+      return true;
+    }
+    return false;
+  }
+
+  incrementAxis(axis: number, steps = 1): void {
+    assertSafeInteger("incrementAxis", "steps", steps);
+
+    if (steps === 0) return;
+    if (steps < 0) {
+      this.decrementAxis(axis, -steps);
+      return;
+    }
+    const base = this.getBaseAt(axis);
+    const next = (this._valuesView[axis] + steps) % base;
+
+    this.setAt(axis, next);
+  }
+
+  decrementAxis(axis: number, steps = 1): void {
+    assertSafeInteger("decrementAxis", "steps", steps);
+
+    if (steps === 0) return;
+    if (steps < 0) {
+      this.incrementAxis(axis, -steps);
+      return;
+    }
+    const base = this.getBaseAt(axis);
+    const next = (this._valuesView[axis] - steps + base) % base;
+
+    this.setAt(axis, next);
+  }
+
+  incrementAxisClamped(axis: number, steps = 1): void {
+    assertSafeInteger("incrementAxisClamped", "steps", steps);
+
+    if (steps === 0) return;
+    if (steps < 0) {
+      this.decrementAxisClamped(axis, -steps);
+      return;
+    }
+
+    const current = this._valuesView[axis];
+    const max = this.getBaseAt(axis) - 1;
+    let next = current + steps;
+
+    if (next > max) {
+      next = max;
+    }
+    if (next !== current) {
+      this.setAt(axis, next);
+    }
+  }
+
+  decrementAxisClamped(axis: number, steps = 1): void {
+    assertSafeInteger("decrementAxisClamped", "delta", steps);
+
+    if (steps === 0) return;
+    if (steps < 0) {
+      this.incrementAxisClamped(axis, -steps);
+      return;
+    }
+
+    const current = this._valuesView[axis];
+    let next = current - steps;
+
+    if (next < 0) {
+      next = 0;
+    }
+    if (next !== current) {
+      this.setAt(axis, next);
+    }
   }
 
   /**
@@ -322,9 +313,12 @@ export class CascadeCounter {
     const base = this._getBaseAt(index, "setAt");
     const next = this.isBoundedLevel(index) ? clampToRange(value, 0, base - 1) : value;
 
-    if (this._values[index] === next) return this;
-    if (this._isUnboundedTopDigit(index)) this._assertTopDigitNonNegative(next, "setAt");
-
+    if (this._values[index] === next) {
+      return this;
+    }
+    if (this._isUnboundedTopDigit(index)) {
+      this._assertTopDigitNonNegative(next, "setAt");
+    }
     this._mutate((_, write) => write(index, next));
 
     return this;
@@ -379,20 +373,23 @@ export class CascadeCounter {
     // No max if the top level is unbounded
     if (this.wrapPolicy === CascadeCounter.NONE) return false;
 
-    // Fixed bases path
     const fixedBases = this.#fixedBases;
+    const values = this._valuesView;
+
+    // Fixed bases path
     if (fixedBases) {
       for (let i = 0; i < this.levels; i++) {
-        if (this._valuesView[i] !== fixedBases[i] - 1) {
+        if (values[i] !== fixedBases[i] - 1) {
           return false;
         }
       }
       return true;
     }
+
     // Dynamic bases path
     for (let i = 0; i < this.levels; i++) {
-      const base = this._getBaseAt(i, "isMax", this._valuesView);
-      if (this._valuesView[i] !== base - 1) {
+      const base = this._getBaseAt(i, "isMax", values);
+      if (values[i] !== base - 1) {
         return false;
       }
     }
@@ -415,8 +412,11 @@ export class CascadeCounter {
       }
       return out;
     }
+
+    const values = this._valuesView;
+
     for (let i = 0; i < this.levels; i++) {
-      out[i] = this._getBaseAt(i, "maxValuesNow", this._valuesView) - 1;
+      out[i] = this._getBaseAt(i, "maxValuesNow", values) - 1;
     }
     return out;
   }
@@ -429,8 +429,10 @@ export class CascadeCounter {
   isMin(options: MinOptions = {}): boolean {
     if (!options.zeroIsMin && this.wrapPolicy === CascadeCounter.NONE) return false;
 
+    const values = this._valuesView;
+
     for (let i = 0; i < this.levels; i++) {
-      if (this._valuesView[i] !== 0) {
+      if (values[i] !== 0) {
         return false;
       }
     }
@@ -456,11 +458,8 @@ export class CascadeCounter {
    * @throws If the provided values are invalid for this counter.
    */
   cloneWithValues(values: ReadonlyArray<number>): CascadeCounter {
-    if (!this.areValuesValid(values)) {
-      throw new Error(
-        `cloneWithValues(): bad digit vector, expected ${this.levels} values matching base constraints`
-      );
-    }
+    this._assertValuesValid(values, "cloneWithValues");
+
     return new CascadeCounter(this.getBase, {
       levels: this.levels,
       initial: [values[0], ...values.slice(1)],
@@ -647,7 +646,9 @@ export class CascadeCounter {
   }
 
   resolveBases(): ReadonlyArray<number> {
-    return Array.from(
+    const fixedBases = this.#fixedBases;
+
+    return fixedBases ? fixedBases : Array.from(
       { length: this.size },
       (_, i) => this.getBaseAt(i)
     );
@@ -784,6 +785,83 @@ export class CascadeCounter {
     return this._values;
   }
 
+  private _incrementAt(startIndex = 0, delta = 1, fn: string = "_incrementAt"): this {
+    if (delta === 0) return this;
+
+    this._assertValidLevel(startIndex, fn);
+    assertSafeInteger(fn, "delta", delta);
+
+    // Fast path: ±1 with no carry/borrow (any index)
+    if (delta === 1) {
+      const next = this._valuesView[startIndex] + 1;
+
+      if (this._isUnboundedTopDigit(startIndex)) {
+        // Unbounded top: no base check, just write
+        this._mutate((_, write) => write(startIndex, next));
+        return this;
+      } else {
+        const base = this._getBaseAt(startIndex, fn);
+        if (next < base) {
+          this._mutate((_, write) => write(startIndex, next));
+          return this;
+        }
+      }
+    } else if (delta === -1) {
+      const next = this._valuesView[startIndex] - 1;
+
+      if (this._isUnboundedTopDigit(startIndex)) {
+        // Unbounded top: allow negative only if configured
+        this._assertTopDigitNonNegative(next, "_incrementAt");
+        this._mutate((_, write) => write(startIndex, next));
+        return this;
+      }
+      // Bounded digit (inner digit or top when a `wrapPolicy` is used):
+      if (next >= 0) {
+        this._mutate((_, write) => write(startIndex, next));
+        return this;
+      }
+    }
+
+    // Slow path: Perform carry operations if needed
+    this._mutate((values, write) => {
+      let i = startIndex;
+      let pending = delta;
+
+      while (pending !== 0 && i < this.levels) {
+        const base = this._getBaseAt(i, "_mutate", values);
+        const next = values[i] + pending;
+
+        if (i < this.levels - 1) {
+          // computes a positive modulo in the range [0, base - 1], even for negative inputs.
+          const rem = posMod(next, base);
+          const carry = (next - rem) / base;
+          write(i, rem);
+          pending = carry;
+          i++;
+        } else {
+          if (this.wrapPolicy === CascadeCounter.RESET) {
+            if (next >= base || next < 0) {
+              for (let k = 0; k < this.levels; k++) write(k, 0);
+              return;
+            }
+            write(i, next); // in-range [0, base-1], so safe to assign
+          } else if (this.wrapPolicy === CascadeCounter.WRAP) {
+            const rem = posMod(next, base);
+            write(i, rem);
+          } else {
+            if (this._isUnboundedTopDigit(i)) {
+              this._assertTopDigitNonNegative(next, "_mutate");
+            }
+            write(i, next); // unbounded top level
+          }
+          pending = 0;
+        }
+      }
+    });
+
+    return this;
+  }
+
   private _isUnboundedTopDigit(index: number): boolean {
     return this.wrapPolicy === CascadeCounter.NONE && this.isTopLevel(index);
   }
@@ -794,23 +872,23 @@ export class CascadeCounter {
       write: (i: number, v: number) => void
     ) => void
   ): boolean {
-    const src = this._valuesView;        // snapshot
-    let work: ReadonlyArray<number> = src;   // what mutator reads
-    let buf: number[] | null = null;     // allocated on first real change
-    let changed = false;
+    const src = this._valuesView;           // snapshot
+    let work: ReadonlyArray<number> = src;  // data being worked on, read-only at first
+    let buf: number[] | null = null;        // mutated buffer for holding temporary changes
+    let changed = false;                    // tracks whether any change occurred
 
     const write = (i: number, v: number) => {
-      const cur = (buf ?? src)[i];
-      if (cur === v) return;             // no-op, avoid clone
+      const currentValue = (buf ?? src)[i];
+      if (currentValue === v) return;  // no-op if no change
       if (!buf) {
-        buf = [...src];
+        buf = [...src];    // initialize buffer on first change
         work = buf;
       }
       buf[i] = v;
       changed = true;
-    };
+    }
 
-    mutator(work, write);                // always pass an array, never null
+    mutator(work, write);  // always pass an array, never null
 
     if (changed && buf) {
       this._values = buf;
@@ -882,12 +960,11 @@ export class CascadeCounter {
     return bases;
   }
 
-  private _assertMinLevels(min: number, fn = "_assertMinLevels"): void {
-    if (min < 1) {
-      throw new RangeError(`${fn}(): minimum levels must be ≥ 1 (got ${min})`);
-    }
-    if (!Number.isSafeInteger(min) || this.levels < min) {
-      throw new RangeError(`${fn}() requires at least ${min} level(s); current=${this.levels}`);
+  private _assertValuesValid(values: ReadonlyArray<number>, fn = "_assertValuesValid"): void {
+    if (!this.areValuesValid(values)) {
+      throw new Error(
+        `${fn}(): bad digit vector, expected '${this.levels}' values matching base constraints`
+      );
     }
   }
 
