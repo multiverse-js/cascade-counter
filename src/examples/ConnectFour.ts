@@ -1,9 +1,8 @@
 import { CascadeCounter } from '../core/Counter';
-import { drop } from '../space/Axis';
-import { inBounds } from '../space/Space'; // Import the inBounds function from Space.ts
-import * as readline from 'readline';
-import { hasLine } from '../space/Space'; // Import hasLine from Space
+import { dropAlongAxis, incrementAxis } from '../space/Axis';
+import { inBounds, hasLine } from '../space/Space'; // Import hasLine from Space
 import { Coord } from '../space/types';
+import * as readline from 'readline';
 
 class ConnectFourWorld {
   // Check in all 4 directions: right, down, diagonal (down-right), diagonal (up-right)
@@ -33,7 +32,7 @@ class ConnectFourWorld {
    * @returns true if the piece was dropped successfully, false if the column is full.
    */
   dropPiece(): boolean {
-    const droppedCoord = drop(
+    const droppedCoord = dropAlongAxis(
       this.caret, // starting coord (currently at top of the column)
       1, // Apply gravity along the y-axis (column)
       1, // Direction downwards (positive)
@@ -108,7 +107,7 @@ class ConnectFourWorld {
    * @param direction - 1 to move right, -1 to move left
    */
   moveCaret(direction: 1 | -1) {
-    this.caret.incrementAxis(0, direction); // Increment the x-axis (left or right)
+    incrementAxis(this.caret, 0, direction); // Increment the x-axis (left or right)
   }
 }
 

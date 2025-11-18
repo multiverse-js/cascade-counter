@@ -1,11 +1,69 @@
 import { CascadeCounter } from "../core/Counter";
 import { Coord } from "./types";
+import { posMod, clampToRange } from "../core/MiscUtils";
 
 import {
   assertSafeIntegerInRangeInclusive,
   assertSafePositiveInteger,
   assertEquals,
+  assertSafeInteger,
+  assertSafeNonNegativeInteger
 } from "../core/AssertUtils";
+
+const assertValidAxis = (fn: string, counter: CascadeCounter, axis: number) => {
+  assertSafeNonNegativeInteger(fn, "axis", axis);
+  assertSafeIntegerInRangeInclusive(fn, "axis", axis, 0, counter.size - 1);
+}
+
+export function setAxis(counter: CascadeCounter, axis: number, value: number) {
+  assertSafeInteger("setAxis", "value", value);
+  assertValidAxis("setAxis", counter, axis);
+
+  const base = counter.getBaseAt(axis);
+  const current = counter.getAt(axis);
+  const next = posMod(value, base);
+
+  if (next !== current) {
+    counter.setAt(axis, next);
+  }
+}
+
+export function setAxisClamped(counter: CascadeCounter, axis: number, value: number): void {
+  assertSafeInteger("setAxisClamped", "value", value);
+  assertValidAxis("setAxisClamped", counter, axis);
+
+  const base = counter.getBaseAt(axis);
+  const current = counter.getAt(axis);
+  const next = clampToRange(value, 0, base - 1);
+
+  if (next !== current) {
+    counter.setAt(axis, next);
+  }
+}
+
+export function incrementAxis(counter: CascadeCounter, axis: number, delta = 1): void {
+  assertSafeInteger("incrementAxis", "delta", delta);
+  if (delta === 0) return;
+  setAxis(counter, axis, counter.getAt(axis) + delta);
+}
+
+export function incrementAxisClamped(counter: CascadeCounter, axis: number, delta = 1) {
+  assertSafeInteger("incrementAxisClamped", "delta", delta);
+  if (delta === 0) return;
+  setAxisClamped(counter, axis, counter.getAt(axis) + delta);
+}
+
+export function decrementAxis(counter: CascadeCounter, axis: number, delta = 1) {
+  assertSafeInteger("decrementAxis", "delta", delta);
+  if (delta === 0) return;
+  setAxis(counter, axis, counter.getAt(axis) - delta);
+}
+
+export function decrementAxisClamped(counter: CascadeCounter, axis: number, delta = 1) {
+  assertSafeInteger("decrementAxisClamped", "delta", delta);
+  if (delta === 0) return;
+  setAxisClamped(counter, axis, counter.getAt(axis) - delta);
+}
 
 /**
  * Drop the CascadeCounter coordinate along a given axis using ND gravity.
@@ -18,7 +76,7 @@ import {
  *
  * @returns The final resting coordinate, or null if the starting cell is blocked.
  */
-export function drop(
+export function dropAlongAxis(
   counter: CascadeCounter,
   axis: number,
   direction: 1 | -1,
@@ -37,7 +95,7 @@ export function drop(
   }
   assertSafeIntegerInRangeInclusive("dropAlongAxis", "dimension", axis, 0, bases.length - 1);
 
-  const target = dropArray(
+  const target = dropArrayAlongAxis(
     counter.values,
     axis,
     direction,
@@ -64,7 +122,7 @@ export function drop(
  * @returns The last free cell along that axis, or null if none available
  *          (e.g. starting cell is blocked).
  */
-export function dropArray(
+export function dropArrayAlongAxis(
   start: Coord,
   axis: number,
   direction: 1 | -1,

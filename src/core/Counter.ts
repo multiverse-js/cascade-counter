@@ -21,7 +21,6 @@ import {
   assertSafeNonNegativeInteger,
   assertEquals,
   assertLessThan,
-  isSafePositiveInteger,
   type SafePositiveInteger
 } from "./AssertUtils";
 
@@ -137,35 +136,27 @@ export class CascadeCounter {
    * @param delta The amount to add (positive or negative, default `1`).
    * @returns `this` (mutates in place).
    */
-  incrementAt(startIndex = 0, delta = 1): this {
+  increment(startIndex = 0, delta = 1): this {
     return this._incrementAt(startIndex, delta, "addAt");
   }
 
-  /** Subtracts `steps` from the digit at `startIndex`, cascading as needed. */
-  decrementAt(startIndex = 0, steps = 1): this {
-    return this._incrementAt(startIndex, -steps, "subAt");
+  /** Subtracts `delta` from the digit at `startIndex`, cascading as needed. */
+  decrement(startIndex = 0, delta = 1): this {
+    return this._incrementAt(startIndex, -delta, "subAt");
   }
 
-  increment(steps = 1): this {
-    return this._incrementAt(0, steps, "increment");
-  }
-
-  decrement(steps = 1): this {
-    return this._incrementAt(0, -steps, "decrement");
-  }
-
-  next(steps = 1): this {
-    if (steps < 0) {
-      return this.prev(-steps);
+  next(delta = 1): this {
+    if (delta < 0) {
+      return this.prev(-delta);
     }
-    return this._incrementAt(0, steps, "next");
+    return this._incrementAt(0, delta, "next");
   }
 
-  prev(steps = 1): this {
-    if (steps < 0) {
-      return this.next(-steps);
+  prev(delta = 1): this {
+    if (delta < 0) {
+      return this.next(-delta);
     }
-    return this._incrementAt(0, -steps, "prev");
+    return this._incrementAt(0, -delta, "prev");
   }
 
   /** Resets all digits to zero. */
@@ -208,8 +199,8 @@ export class CascadeCounter {
     return null;
   }
 
-  peekPrevValues(): ReadonlyArray<number> | null {
-    if (this.canPrev()) {
+  peekPrevValues(options: MinOptions = {}): ReadonlyArray<number> | null {
+    if (this.canPrev(options)) {
       return this.clone().prev().values;
     }
     return null;
@@ -224,80 +215,11 @@ export class CascadeCounter {
   }
 
   tryPrev(options: MinOptions = {}): boolean {
-    if (this.canPrev()) {
+    if (this.canPrev(options)) {
       this.prev();
       return true;
     }
     return false;
-  }
-
-  incrementAxis(axis: number, steps = 1): void {
-    assertSafeInteger("incrementAxis", "steps", steps);
-
-    if (steps === 0) return;
-    if (steps < 0) {
-      this.decrementAxis(axis, -steps);
-      return;
-    }
-    const base = this.getBaseAt(axis);
-    const next = (this._valuesView[axis] + steps) % base;
-
-    this.setAt(axis, next);
-  }
-
-  decrementAxis(axis: number, steps = 1): void {
-    assertSafeInteger("decrementAxis", "steps", steps);
-
-    if (steps === 0) return;
-    if (steps < 0) {
-      this.incrementAxis(axis, -steps);
-      return;
-    }
-    const base = this.getBaseAt(axis);
-    const next = (this._valuesView[axis] - steps + base) % base;
-
-    this.setAt(axis, next);
-  }
-
-  incrementAxisClamped(axis: number, steps = 1): void {
-    assertSafeInteger("incrementAxisClamped", "steps", steps);
-
-    if (steps === 0) return;
-    if (steps < 0) {
-      this.decrementAxisClamped(axis, -steps);
-      return;
-    }
-
-    const current = this._valuesView[axis];
-    const max = this.getBaseAt(axis) - 1;
-    let next = current + steps;
-
-    if (next > max) {
-      next = max;
-    }
-    if (next !== current) {
-      this.setAt(axis, next);
-    }
-  }
-
-  decrementAxisClamped(axis: number, steps = 1): void {
-    assertSafeInteger("decrementAxisClamped", "delta", steps);
-
-    if (steps === 0) return;
-    if (steps < 0) {
-      this.incrementAxisClamped(axis, -steps);
-      return;
-    }
-
-    const current = this._valuesView[axis];
-    let next = current - steps;
-
-    if (next < 0) {
-      next = 0;
-    }
-    if (next !== current) {
-      this.setAt(axis, next);
-    }
   }
 
   /**
@@ -596,18 +518,18 @@ export class CascadeCounter {
     return values;
   }
 
-  /** Iterate N steps forward or backward (respects wrapPolicy). */
+  /** Iterate N delta forward or backward (respects wrapPolicy). */
   *iterate(
-    steps: number,
+    delta: number,
     direction: IterateDirection = "forward",
     stopOnReset = false
   ): Iterable<ReadonlyArray<number>> {
-    assertSafeNonNegativeInteger("iterate", "steps", steps);
+    assertSafeNonNegativeInteger("iterate", "delta", delta);
 
     const shouldStopOnReset = stopOnReset && this.wrapPolicy === CascadeCounter.RESET;
 
     if (direction === "forward") {
-      for (let i = 0; i < steps; i++) {
+      for (let i = 0; i < delta; i++) {
         this.next(1);
         yield this.values;
         if (shouldStopOnReset && this.isEmpty()) {
@@ -615,7 +537,7 @@ export class CascadeCounter {
         }
       }
     } else {
-      for (let i = 0; i < steps; i++) {
+      for (let i = 0; i < delta; i++) {
         this.prev(1);
         yield this.values; // fresh copy
         if (shouldStopOnReset && this.isEmpty()) {
@@ -629,16 +551,16 @@ export class CascadeCounter {
     return this._valuesView.every(v => v === 0);
   }
 
-  isBoundedLevel(index: number): boolean {
-    return this.wrapPolicy !== CascadeCounter.NONE || index < this.levels - 1;
-  }
-
   isTopLevel(index: number): boolean {
     return index === this.levels - 1;
   }
 
+  isBoundedLevel(index: number): boolean {
+    return this.wrapPolicy !== CascadeCounter.NONE || index < this.levels - 1;
+  }
+
   isValidLevel(index: number): boolean {
-    return index >= 0 && index < this.levels && Number.isSafeInteger(index);
+    return index >= 0 && index < this.levels;
   }
 
   hasFixedBases(): boolean {
@@ -672,29 +594,6 @@ export class CascadeCounter {
   /** Returns a string representation of the current digits, joined by `sep`. */
   toString(separator = ","): string {
     return this._valuesView.join(separator);
-  }
-
-  debugString(): string {
-    return `[${this._valuesView.join(",")}]` +
-      `(v${this.version}, wrapPolicy=${this.wrapPolicy}, allowNegativeTop=${this.allowNegativeTop})`;
-  }
-
-  /**
-   * Quick validation for fixed bases.
-   * @returns `true` if every base is a positive integer (≥ 1) and the list is non-empty.
-   */
-  static areBasesValid(bases: ReadonlyArray<number>): boolean {
-    if (!bases.length) return false;
-    for (const base of bases) {
-      if (!CascadeCounter.isBaseValid(base)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  static isBaseValid(base: number): base is SafePositiveInteger {
-    return isSafePositiveInteger(base);
   }
 
   static totalStates(bases: ReadonlyArray<number>): number {
@@ -774,7 +673,7 @@ export class CascadeCounter {
     return this._wrapPolicy;
   }
 
-  get allowNegativeTop(): boolean {
+  get allowsNegativeTop(): boolean {
     return this._allowNegativeTop;
   }
 
@@ -785,7 +684,7 @@ export class CascadeCounter {
     return this._values;
   }
 
-  private _incrementAt(startIndex = 0, delta = 1, fn: string = "_incrementAt"): this {
+  private _incrementAt(startIndex: number, delta: number, fn = "_incrementAt"): this {
     if (delta === 0) return this;
 
     this._assertValidLevel(startIndex, fn);
@@ -863,7 +762,7 @@ export class CascadeCounter {
   }
 
   private _isUnboundedTopDigit(index: number): boolean {
-    return this.wrapPolicy === CascadeCounter.NONE && this.isTopLevel(index);
+    return this.wrapPolicy === CascadeCounter.NONE && index === this.levels - 1;
   }
 
   private _mutate(
@@ -935,14 +834,14 @@ export class CascadeCounter {
   private _getBaseAt(
     i: number,
     fn = "_getBaseAt",
-    values?: ReadonlyArray<number>
+    values: ReadonlyArray<number> = this._valuesView
   ): SafePositiveInteger {
     const fixedBases = this.#fixedBases;
     // Use frozen reference if bases are fixed in order to bypass validity checks
     if (fixedBases) {
       return fixedBases[i] as SafePositiveInteger;
     }
-    const base = this.getBase(i, values ?? this._valuesView);
+    const base = this.getBase(i, values);
     assertSafePositiveInteger(fn, "base", base);
 
     return base;
