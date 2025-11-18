@@ -122,7 +122,7 @@ export class CascadeCounter {
   }
 
   /**
-   * Adds `delta` to the digit at `start` level, cascading carry or borrow
+   * Adds `delta` to the digit at `startIndex` level, cascading carry or borrow
    * through higher levels as needed.
    *
    * **Behavior:**
@@ -136,16 +136,12 @@ export class CascadeCounter {
    * @param startIndex The starting level for the addition (default `0`).
    * @returns `this` (mutates in place).
    */
-  offsetAt(startIndex = 0, delta = 1): this {
-    return this._offsetAt(startIndex, delta, "offsetAt");
+  incrementAt(startIndex = 0, delta = 1): this {
+    return this._offsetAt(startIndex, delta, "increment");
   }
 
-  increment(delta = 1): this {
-    return this._offsetAt(0, delta, "increment");
-  }
-
-  decrement(delta = 1): this {
-    return this._offsetAt(0, -delta, "decrement");
+  decrementAt(startIndex = 0, delta = 1): this {
+    return this._offsetAt(startIndex, -delta, "decrement");
   }
 
   next(delta = 1): this {

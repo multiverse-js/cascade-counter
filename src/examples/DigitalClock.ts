@@ -28,7 +28,7 @@ function renderClock() {
 }
 
 function tick() {
-  clock.increment();
+  clock.incrementAt();
   renderClock();
 }
 
