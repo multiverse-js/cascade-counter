@@ -194,14 +194,14 @@ export class CascadeCounter {
   /** getBase must be referentially transparent for a given values during a call. */
   peekNextValues(): ReadonlyArray<number> | null {
     if (this.canNext()) {
-      return this.clone().next().values;
+      return this._clone().next().values;
     }
     return null;
   }
 
   peekPrevValues(options: MinOptions = {}): ReadonlyArray<number> | null {
     if (this.canPrev(options)) {
-      return this.clone().prev().values;
+      return this._clone().prev().values;
     }
     return null;
   }
@@ -256,14 +256,10 @@ export class CascadeCounter {
    * @throws If array length does not match the number of levels.
    */
   set(nextValues: ReadonlyArray<number>): this {
-    assertEquals("set", "nextValues.length", nextValues.length, this.levels);
-    for (let i = 0; i < nextValues.length; i++) {
-      assertSafeInteger("set", `nextValues[${i}]`, nextValues[i]);
-    }
+    this._assertValuesValid(nextValues, "set");
     if (arraysEqual(this._valuesView, nextValues)) return this;
 
     this._values = [...nextValues];
-    this._clampAll();
     this._version++;
 
     return this;
@@ -361,33 +357,18 @@ export class CascadeCounter {
     return true;
   }
 
-  /** 
-   * Creates a deep clone, preserving configuration and digit state. 
-   */
-  clone(): CascadeCounter {
-    return new CascadeCounter(this.getBase, {
-      levels: this.levels,
-      initial: [this._valuesView[0], ...this._valuesView.slice(1)],
-      wrapPolicy: this.wrapPolicy,
-      allowNegativeTop: this._allowNegativeTop,
-    });
-  }
-
   /**
    * Returns a cloned counter with a new digit vector, 
    * if valid under current configuration.
    *
    * @throws If the provided values are invalid for this counter.
    */
-  cloneWithValues(values: ReadonlyArray<number>): CascadeCounter {
-    this._assertValuesValid(values, "cloneWithValues");
-
-    return new CascadeCounter(this.getBase, {
-      levels: this.levels,
-      initial: [values[0], ...values.slice(1)],
-      wrapPolicy: this.wrapPolicy,
-      allowNegativeTop: this._allowNegativeTop,
-    });
+  clone(values?: ReadonlyArray<number>): CascadeCounter {
+    if (values) {
+      this._assertValuesValid(values, "cloneWithValues");
+      return this._clone(values);
+    }
+    return this._clone();
   }
 
   /**
@@ -849,6 +830,15 @@ export class CascadeCounter {
 
   private _setFixedBases(bases: ReadonlyArray<SafePositiveInteger>) {
     this.#fixedBases = bases;
+  }
+
+  private _clone(values: ReadonlyArray<number> = this._valuesView): CascadeCounter {
+    return new CascadeCounter(this.getBase, {
+      levels: this.levels,
+      initial: [values[0], ...values.slice(1)],
+      wrapPolicy: this.wrapPolicy,
+      allowNegativeTop: this._allowNegativeTop,
+    });
   }
 
   private _assertAndGetFixedBases(fn = "_assertAndGetFixedBases"): ReadonlyArray<SafePositiveInteger> {
