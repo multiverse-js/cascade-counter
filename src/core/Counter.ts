@@ -132,16 +132,16 @@ export class CascadeCounter {
    *   - If `wrapPolicy === reset`: overflow/underflow resets **all digits** to `0`.
    *   - If `wrapPolicy === wrap`: top level wraps around modulo its base.
    *
-   * @param delta      The amount to add (positive or negative, default `1`).
    * @param startIndex The starting level for the addition (default `0`).
+   * @param delta      The amount to add (positive or negative, default `1`).
    * @returns `this` (mutates in place).
    */
   incrementAt(startIndex = 0, delta = 1): this {
-    return this._offsetAt(startIndex, delta, "increment");
+    return this._offsetAt(startIndex, delta, "incrementAt");
   }
 
   decrementAt(startIndex = 0, delta = 1): this {
-    return this._offsetAt(startIndex, -delta, "decrement");
+    return this._offsetAt(startIndex, -delta, "decrementAt");
   }
 
   next(delta = 1): this {
@@ -498,7 +498,7 @@ export class CascadeCounter {
     return values;
   }
 
-  /** Iterate N delta forward or backward (respects wrapPolicy). */
+  /** Iterate N steps forward or backward (respects wrapPolicy). */
   *iterate(
     steps: number,
     direction: IterateDirection = "forward",
@@ -690,7 +690,7 @@ export class CascadeCounter {
 
       if (this._isUnboundedTopDigit(startIndex)) {
         // Unbounded top: allow negative only if configured
-        this._assertTopDigitNonNegative(next, "_offsetAt");
+        this._assertTopDigitNonNegative(next, fn);
         this._mutate((_, write) => write(startIndex, next));
         return this;
       }
@@ -707,7 +707,7 @@ export class CascadeCounter {
       let pending = delta;
 
       while (pending !== 0 && i < this.levels) {
-        const base = this._getBaseAt(i, "_mutate", values);
+        const base = this._getBaseAt(i, fn, values);
         const next = values[i] + pending;
 
         if (i < this.levels - 1) {
@@ -729,7 +729,7 @@ export class CascadeCounter {
             write(i, rem);
           } else {
             if (this._isUnboundedTopDigit(i)) {
-              this._assertTopDigitNonNegative(next, "_mutate");
+              this._assertTopDigitNonNegative(next, fn);
             }
             write(i, next); // unbounded top level
           }
