@@ -132,17 +132,20 @@ export class CascadeCounter {
    *   - If `wrapPolicy === reset`: overflow/underflow resets **all digits** to `0`.
    *   - If `wrapPolicy === wrap`: top level wraps around modulo its base.
    *
-   * @param startIndex The starting level for the addition (default `0`).
    * @param delta      The amount to add (positive or negative, default `1`).
+   * @param startIndex The starting level for the addition (default `0`).
    * @returns `this` (mutates in place).
    */
-  increment(delta = 1, startIndex = 0): this {
-    return this._offsetAt(startIndex, delta, "increment");
+  offsetAt(startIndex = 0, delta = 1): this {
+    return this._offsetAt(startIndex, delta, "offsetAt");
   }
 
-  /** Subtracts `delta` from the digit at `startIndex`, cascading as needed. */
-  decrement(delta = 1, startIndex = 0): this {
-    return this._offsetAt(startIndex, -delta, "decrement");
+  increment(delta = 1): this {
+    return this._offsetAt(0, delta, "increment");
+  }
+
+  decrement(delta = 1): this {
+    return this._offsetAt(0, -delta, "decrement");
   }
 
   next(delta = 1): this {
@@ -364,8 +367,8 @@ export class CascadeCounter {
    * @throws If the provided values are invalid for this counter.
    */
   clone(values?: ReadonlyArray<number>): CascadeCounter {
-    if (values) {
-      this._assertValuesValid(values, "cloneWithValues");
+    if (values !== undefined) {
+      this._assertValuesValid(values, "clone");
       return this._clone(values);
     }
     return this._clone();

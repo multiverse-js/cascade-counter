@@ -84,16 +84,16 @@ process.stdin.on("data", (key: string) => {
   }
 
   // Day
-  if (k === "w") dateCounter.decrement(1); // previous day
-  if (k === "s") dateCounter.increment(1); // next day
+  if (k === "w") dateCounter.offsetAt(0); // previous day
+  if (k === "s") dateCounter.offsetAt(0); // next day
 
   // Month
-  if (k === "a") dateCounter.subAt(1, 1);
-  if (k === "d") dateCounter.addAt(1, 1);
+  if (k === "a") dateCounter.offsetAt(1, 1);
+  if (k === "d") dateCounter.offsetAt(1, 1);
 
   // Year (arrow keys)
-  if (key === "\x1B[A") dateCounter.subAt(2, 1); // up arrow
-  if (key === "\x1B[B") dateCounter.addAt(2, 1); // down arrow
+  if (key === "\x1B[A") dateCounter.offsetAt(2, 1); // up arrow
+  if (key === "\x1B[B") dateCounter.offsetAt(2, 1); // down arrow
 
   printDate();
 });
