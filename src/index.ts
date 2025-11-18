@@ -14,3 +14,11 @@ export type {
 
 export * from "./space/Axis";
 export * from "./space/Distance";
+export * from "./space/Space";
+
+export type {
+  Coord,
+  CoordPredicate,
+  NeighborhoodKind,
+  FloodMode
+} from "./space/types";

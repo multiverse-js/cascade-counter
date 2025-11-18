@@ -678,12 +678,11 @@ export class CascadeCounter {
         // Unbounded top: no base check, just write
         this._mutate((_, write) => write(startIndex, next));
         return this;
-      } else {
-        const base = this._getBaseAt(startIndex, fn);
-        if (next < base) {
-          this._mutate((_, write) => write(startIndex, next));
-          return this;
-        }
+      }
+      const base = this._getBaseAt(startIndex, fn);
+      if (next < base) {
+        this._mutate((_, write) => write(startIndex, next));
+        return this;
       }
     } else if (delta === -1) {
       const next = this._valuesView[startIndex] - 1;
@@ -720,7 +719,9 @@ export class CascadeCounter {
         } else {
           if (this.wrapPolicy === CascadeCounter.RESET) {
             if (next >= base || next < 0) {
-              for (let k = 0; k < this.levels; k++) write(k, 0);
+              for (let k = 0; k < this.levels; k++) {
+                write(k, 0);
+              }
               return;
             }
             write(i, next); // in-range [0, base-1], so safe to assign

@@ -368,7 +368,7 @@ export function transformCoord(coord: Coord, matrix: readonly number[][]): Coord
 export function inBounds(coord: Coord, bounds: Coord): boolean {
   assertEquals("inBounds", "coord.length", coord.length, bounds.length);
 
-  for (let i = 0; i < length; i++) {
+  for (let i = 0; i < coord.length; i++) {
     if (coord[i] < 0 || coord[i] >= bounds[i]) {
       return false;
     }
