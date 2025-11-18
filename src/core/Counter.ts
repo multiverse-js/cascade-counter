@@ -133,30 +133,30 @@ export class CascadeCounter {
    *   - If `wrapPolicy === wrap`: top level wraps around modulo its base.
    *
    * @param startIndex The starting level for the addition (default `0`).
-   * @param delta The amount to add (positive or negative, default `1`).
+   * @param delta      The amount to add (positive or negative, default `1`).
    * @returns `this` (mutates in place).
    */
-  increment(startIndex = 0, delta = 1): this {
-    return this._incrementAt(startIndex, delta, "addAt");
+  increment(delta = 1, startIndex = 0): this {
+    return this._offsetAt(startIndex, delta, "increment");
   }
 
   /** Subtracts `delta` from the digit at `startIndex`, cascading as needed. */
-  decrement(startIndex = 0, delta = 1): this {
-    return this._incrementAt(startIndex, -delta, "subAt");
+  decrement(delta = 1, startIndex = 0): this {
+    return this._offsetAt(startIndex, -delta, "decrement");
   }
 
   next(delta = 1): this {
     if (delta < 0) {
       return this.prev(-delta);
     }
-    return this._incrementAt(0, delta, "next");
+    return this._offsetAt(0, delta, "next");
   }
 
   prev(delta = 1): this {
     if (delta < 0) {
       return this.next(-delta);
     }
-    return this._incrementAt(0, -delta, "prev");
+    return this._offsetAt(0, -delta, "prev");
   }
 
   /** Resets all digits to zero. */
@@ -501,16 +501,16 @@ export class CascadeCounter {
 
   /** Iterate N delta forward or backward (respects wrapPolicy). */
   *iterate(
-    delta: number,
+    steps: number,
     direction: IterateDirection = "forward",
     stopOnReset = false
   ): Iterable<ReadonlyArray<number>> {
-    assertSafeNonNegativeInteger("iterate", "delta", delta);
+    assertSafeNonNegativeInteger("iterate", "steps", steps);
 
     const shouldStopOnReset = stopOnReset && this.wrapPolicy === CascadeCounter.RESET;
 
     if (direction === "forward") {
-      for (let i = 0; i < delta; i++) {
+      for (let i = 0; i < steps; i++) {
         this.next(1);
         yield this.values;
         if (shouldStopOnReset && this.isEmpty()) {
@@ -518,7 +518,7 @@ export class CascadeCounter {
         }
       }
     } else {
-      for (let i = 0; i < delta; i++) {
+      for (let i = 0; i < steps; i++) {
         this.prev(1);
         yield this.values; // fresh copy
         if (shouldStopOnReset && this.isEmpty()) {
@@ -541,7 +541,7 @@ export class CascadeCounter {
   }
 
   isValidLevel(index: number): boolean {
-    return index >= 0 && index < this.levels;
+    return Number.isSafeInteger(index) && index >= 0 && index < this.levels;
   }
 
   hasFixedBases(): boolean {
@@ -654,7 +654,7 @@ export class CascadeCounter {
     return this._wrapPolicy;
   }
 
-  get allowsNegativeTop(): boolean {
+  get allowNegativeTop(): boolean {
     return this._allowNegativeTop;
   }
 
@@ -665,7 +665,7 @@ export class CascadeCounter {
     return this._values;
   }
 
-  private _incrementAt(startIndex: number, delta: number, fn = "_incrementAt"): this {
+  private _offsetAt(startIndex: number, delta: number, fn = "_offsetAt"): this {
     if (delta === 0) return this;
 
     this._assertValidLevel(startIndex, fn);
@@ -691,7 +691,7 @@ export class CascadeCounter {
 
       if (this._isUnboundedTopDigit(startIndex)) {
         // Unbounded top: allow negative only if configured
-        this._assertTopDigitNonNegative(next, "_incrementAt");
+        this._assertTopDigitNonNegative(next, "_offsetAt");
         this._mutate((_, write) => write(startIndex, next));
         return this;
       }
