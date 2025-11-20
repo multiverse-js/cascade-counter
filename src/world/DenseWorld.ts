@@ -74,7 +74,10 @@ export class DenseWorld<T> extends BaseWorld<T> {
 
       for (let x = 0; x < width; x++) {
         const cell = this.get([x]);
-        out += (cell === this.defaultValue ? " . " : ` ${cell}${cellPadding}`);
+        out += (cell === this.defaultValue
+          ? ` ${this.defaultValue} `
+          : ` ${cell}${cellPadding}`
+        );
       }
     } else if (this.bounds.length === 2) {
       const [width, height] = this.bounds;
@@ -82,7 +85,10 @@ export class DenseWorld<T> extends BaseWorld<T> {
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const cell = this.get([x, y]);
-          out += (cell === this.defaultValue ? " . " : `${cell}${cellPadding}`);
+          out += (cell === this.defaultValue
+            ? ` ${this.defaultValue} `
+            : `${cell}${cellPadding}`
+          );
         }
         out += rowSeparator;
       }

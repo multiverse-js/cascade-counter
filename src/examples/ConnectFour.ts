@@ -20,10 +20,10 @@ class ConnectFour {
     this.board = new DenseWorld<string>({
       bounds: [boardWidth, boardHeight],  // 2D board
       strictBounds: true,
-      defaultValue: ""
+      defaultValue: "."
     });
     this.caret = CascadeCounter.fromFixedBases([boardWidth]); // 1D counter over columns
-    this.currentPlayer = CascadeCounter.fromFixedBases([2]); // 1D counter for piece 2 types
+    this.currentPlayer = CascadeCounter.fromFixedBases([2]);  // 1D counter for piece 2 types
     this.lastMove = null;
   }
 
@@ -58,11 +58,10 @@ class ConnectFour {
   checkWin(): boolean {
     if (!this.lastMove) return false;
 
-    const [x, y] = this.lastMove;
-
     for (const direction of DIRECTIONS) {
       const line = findLine(
-        [x, y], direction, 4,
+        this.lastMove,
+        direction, 4,
         this.board.bounds,
         (coord) => this.board.get(coord) === this.getCurrentPlayerToken()
       );
