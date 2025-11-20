@@ -6,19 +6,19 @@ import { DenseWorld } from "../world/DenseWorld";
 import { Coord } from "../space/types";
 import * as readline from "readline";
 
-const PLAYER_TOKEN = ["🔴", "🟡"];
-const WIN_TOKEN = "🟢";
+const PLAYER_TOKENS = ["🔴", "🟡"] as const;
+const WIN_TOKEN = "🟢" as const;
 const DIRECTIONS: Coord[] = generateQuadrantVectors(2); // All unique quadrant directions (right, down, diag, etc.)
 
 class ConnectFour {
-  private readonly board: DenseWorld<string>;      // ND world
+  private readonly board: DenseWorld<string>;      // ND array
   private readonly caret: CascadeCounter;          // ND counter for column selection
   private readonly currentPlayer: CascadeCounter;  // ND piece types
   private lastMove: Coord | null;
 
   constructor(boardWidth: number, boardHeight: number) {
     this.board = new DenseWorld<string>({
-      bounds: [boardWidth, boardHeight],  // 2D world
+      bounds: [boardWidth, boardHeight],  // 2D board
       strictBounds: true,
       defaultValue: ""
     });
@@ -32,7 +32,7 @@ class ConnectFour {
   }
 
   getCurrentPlayerToken() {
-    return PLAYER_TOKEN[this.currentPlayer.values[0]];
+    return this.currentPlayer.mapDigit(0, PLAYER_TOKENS);
   }
 
   switchPlayer() {

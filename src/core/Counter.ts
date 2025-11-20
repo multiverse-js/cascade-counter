@@ -634,6 +634,24 @@ export class CascadeCounter {
     return counter;
   }
 
+  /**
+   * Maps the digit at a given level to a symbol from an alphabet.
+   *
+   * `alphabet.length` must be >= base at that level.
+   */
+  mapDigit<T>(level: number, alphabet: readonly T[]): T {
+    this._assertValidLevel(level, "mapDigit");
+
+    const base = this.getBaseAt(level);
+    if (alphabet.length < base) {
+      throw new RangeError(
+        `mapDigit(): alphabet length ${alphabet.length} < base ${base} at level ${level}.`
+      );
+    }
+    const digit = this.getAt(level);
+    return alphabet[digit];
+  }
+
   /** Number of digit levels in this counter. */
   get size(): number {
     return this.levels;
