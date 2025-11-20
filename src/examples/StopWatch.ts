@@ -3,7 +3,7 @@ import { CascadeCounter } from "../core/Counter";
 // Mixed-radix time:
 // [ms, sec, min, hours]
 //  0    1    2    3
-const getBase = (level: number, values: ReadonlyArray<number>): number => {
+const getBase = (level: number): number => {
   switch (level) {
     case 0: return 1000; // milliseconds
     case 1: return 60;   // seconds

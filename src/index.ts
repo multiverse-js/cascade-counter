@@ -1,4 +1,5 @@
 export * from "./core/Counter";
+export * from "./core/AxisUtils";
 
 export { Resolvers } from "./core/BaseResolverFactory";
 
@@ -12,9 +13,9 @@ export type {
   BaseRules
 } from "./core/types";
 
-export * from "./space/Axis";
-export * from "./space/Distance";
 export * from "./space/Space";
+export * from "./space/Distance";
+export * from "./space/Vector";
 
 export type {
   Coord,

@@ -329,7 +329,6 @@ export class CascadeCounter {
       }
       return out;
     }
-
     const values = this._valuesView;
 
     for (let i = 0; i < this.levels; i++) {

@@ -19,6 +19,48 @@ import {
 const _neighborOffsetCache = new Map<string, ReadonlyArray<Offset>>();
 
 /**
+ * Drop an array along a given axis with "gravity" in one direction
+ * until you hit the last free cell.
+ *
+ * @param start      Starting coordinate (e.g. top of a column).
+ * @param axis       Axis index to apply gravity along.
+ * @param direction  Gravity direction: +1 (increasing index) or -1 (decreasing).
+ * @param bases      Per-axis sizes (e.g. [width, height, depth, ...]).
+ * @param isBlocked  Predicate: true if a cell is occupied / blocked.
+ *
+ * @returns The last free cell along that axis, or null if none available
+ *          (e.g. starting cell is blocked).
+ */
+export function dropAlongAxis(
+  start: Coord,
+  axis: number,
+  direction: 1 | -1,
+  bases: ReadonlyArray<number>,
+  isBlocked: (coord: Array<number>) => boolean
+): Coord | null {
+  let current = [...start];
+
+  // If starting cell is blocked, no valid drop target.
+  if (isBlocked(current)) return null;
+
+  const maxIndex = bases[axis] - 1;
+  let nextIndex = current[axis] + direction;
+
+  while (nextIndex >= 0 && nextIndex <= maxIndex) {
+    const next = [...current];
+    next[axis] = nextIndex;
+
+    if (isBlocked(next)) break;
+
+    // Valid + not blocked → fall one step
+    current = next;
+    nextIndex = current[axis] + direction;
+  }
+
+  return current;
+}
+
+/**
  * Returns true iff every coordinate in the rectangular ND region
  * defined by `bases` satisfies `predicate`.
  *
@@ -54,53 +96,57 @@ export function isFull(bases: ReadonlyArray<number>, predicate: CoordPredicate):
 }
 
 /**
- * Returns true iff there are at least `length` consecutive cells
- * along the line passing through `start` in ±`direction` that satisfy `matches`.
+ * Returns the coordinates of a consecutive line of `length` cells
+ * passing through `start` in ±`direction`, if all satisfy `matches`.
  *
- * Includes `start` itself in the count if it matches.
+ * Includes `start` itself.
  *
- * Only up to `length - 1` steps are taken in each direction, since we don't
- * need to scan beyond the required run length.
+ * Returns:
+ *   - Coord[] of length `length` on success
+ *   - null otherwise
  */
-export function hasLine(
+export function findLine(
   start: Coord,
   direction: Coord,
   length: number,
-  inBounds: CoordPredicate,
+  bounds: Coord,
   matches: CoordPredicate
-): boolean {
-  assertEquals("hasLine", "direction.length", direction.length, start.length);
+): Coord[] | null {
+  assertEquals("findLine", "direction.length", direction.length, start.length);
 
-  if (!hasNonZeroValue(direction)) throw new Error("hasLine(): direction cannot be all zeros");
-  if (length <= 0) return true;
-  if (!matches(start)) return false;
+  if (!hasNonZeroValue(direction)) {
+    throw new Error("findLine(): direction cannot be all zeros");
+  }
+
+  if (length <= 0) return []; // degenerate case
+  if (!matches(start)) return null;
 
   const numDimensions = start.length;
-  let count = 1; // start already matched
+  const line: Coord[] = [ [...start] ]; // include start
 
-  const stepDir = (sign: 1 | -1): boolean => {
+  // helper to step forward or backward
+  const stepDir = (sign: 1 | -1): void => {
     const cur = [...start];
 
-    // We only need at most (length - 1) steps in this direction
+    // up to (length - 1) steps
     for (let step = 1; step < length; step++) {
       for (let i = 0; i < numDimensions; i++) {
-        cur[i] = cur[i] + sign * direction[i];
+        cur[i] += sign * direction[i];
       }
-      if (!inBounds(cur) || !matches(cur)) {
-        break;
-      }
-      count++;
-      if (count >= length) {
-        return true;
-      }
+      if (!inBounds(cur, bounds) || !matches(cur)) break;
+
+      line.push([...cur]);
+
+      if (line.length >= length) return;
     }
-    return false;
   };
 
-  if (stepDir(1)) return true;
-  if (stepDir(-1)) return true;
-
-  return count >= length;
+  // Step in both directions
+  stepDir(1);
+  if (line.length < length) {
+    stepDir(-1);
+  }
+  return line.length >= length ? line.slice(0, length) : null;
 }
 
 /**

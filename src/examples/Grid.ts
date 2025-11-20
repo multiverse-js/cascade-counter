@@ -1,5 +1,5 @@
 import { CascadeCounter } from "../core/Counter";
-import { incrementAxisClamped, decrementAxisClamped } from "../space/Axis";
+import { offsetAxisClamped } from "../core/AxisUtils";
 import process from "node:process";
 
 const WIDTH = 10;
@@ -32,10 +32,10 @@ function printGrid() {
 
 // --- Helper functions ---
 
-function up() { decrementAxisClamped(grid, 1, 1); }
-function down() { incrementAxisClamped(grid, 1, 1); }
-function left() { decrementAxisClamped(grid, 0, 1); }
-function right() { incrementAxisClamped(grid, 0, 1); }
+function up() { offsetAxisClamped(grid, 1, -1); }
+function down() { offsetAxisClamped(grid, 1, 1); }
+function left() { offsetAxisClamped(grid, 0, -1); }
+function right() { offsetAxisClamped(grid, 0, 1); }
 
 // --- Keyboard input setup ---
 

@@ -1,113 +1,96 @@
 import { CascadeCounter } from '../core/Counter';
-import { dropAlongAxis, incrementAxis } from '../space/Axis';
-import { inBounds, hasLine } from '../space/Space'; // Import hasLine from Space
+import { offsetAxis } from '../core/AxisUtils';
+import { dropAlongAxis, findLine } from '../space/Space';
+import { generateQuadrantVectors } from '../space/Vector';
 import { Coord } from '../space/types';
 import * as readline from 'readline';
 
-class ConnectFourWorld {
+class ConnectFour {
   // Check in all 4 directions: right, down, diagonal (down-right), diagonal (up-right)
-  private static directions: Coord[] = [
-    [1, 0],   // Right (horizontal)
-    [0, 1],   // Down (vertical)
-    [1, 1],   // Down-right diagonal
-    [1, -1],  // Up-right diagonal
-  ];
+  private static directions: Coord[] = generateQuadrantVectors(2);
 
-  boardState: string[][]; // 2D array representing the board
+  board: string[][]; // 2D array representing the board
   currentPlayer: string; // 'X' or 'O'
   caret: CascadeCounter; // CascadeCounter for the caret position
-  maxRows: number;
-  maxCols: number;
+  bounds: readonly number[];
+  lastMove: Coord | null;
 
   constructor(boardWidth: number, boardHeight: number) {
-    this.maxCols = boardWidth;
-    this.maxRows = boardHeight;
-    this.boardState = Array.from({ length: boardHeight }, () => Array(boardWidth).fill(''));
-    this.currentPlayer = 'X'; // X starts
-    this.caret = CascadeCounter.fromFixedBases([boardWidth, boardHeight]); // Caret is a CascadeCounter with 2D dimensions
+    this.bounds = [boardWidth, boardHeight];
+    this.board = Array.from({ length: boardHeight }, () => Array(boardWidth).fill(''));
+    this.currentPlayer = '🔴'; // X starts
+    this.caret = CascadeCounter.fromFixedBases([boardWidth]);
+    this.lastMove = null;
   }
 
-  /**
-   * Drop a piece using the Space API's dropAlongAxis
-   * @returns true if the piece was dropped successfully, false if the column is full.
-   */
   dropPiece(): boolean {
     const droppedCoord = dropAlongAxis(
-      this.caret, // starting coord (currently at top of the column)
+      [this.caret.values[0], 0], // starting coord (currently at top of the column)
       1, // Apply gravity along the y-axis (column)
       1, // Direction downwards (positive)
-      (coord: Coord) => this.boardState[coord[1]][coord[0]]  !== '', // Check if the cell is free (empty)
-      [this.maxCols, this.maxRows] // Board dimensions
+      this.bounds, // Board dimensions
+      (coord: Coord) => this.board[coord[1]][coord[0]] !== '' // Check if the cell is blocked
     );
+    if (!droppedCoord) return false;
 
-    console.log("coord: ", droppedCoord);
+    const [x, y] = droppedCoord;
+    this.board[y][x] = this.currentPlayer;
+    this.lastMove = droppedCoord;
 
-    if (droppedCoord) {
-      console.log("dropped 1");
-      this.boardState[droppedCoord[1]][droppedCoord[0]] = this.currentPlayer;
-      return true;
-    }
-    return false; // Column is full
+    return true;
   }
 
-  /**
-   * Switch the current player.
-   */
   switchPlayer() {
-    this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+    this.currentPlayer = this.currentPlayer === '🔴' ? '🟡' : '🔴';
   }
 
-  /**
-   * Check if the current player has won the game.
-   * @returns true if the current player wins.
-   */
   checkWin(): boolean {
-    for (let row = 0; row < this.boardState.length; row++) {
-      for (let col = 0; col < this.boardState[row].length; col++) {
-        if (this.boardState[row][col] === this.currentPlayer) {
-          // Use the hasLine function from Space to check for a line of 4 in each direction
-          for (const direction of ConnectFourWorld.directions) {
-            if (hasLine(
-              [col, row],
-              direction, 4,
-              (coord) => inBounds(coord, [this.maxCols, this.maxRows]),
-              (coord) => this.boardState[coord[1]][coord[0]] === this.currentPlayer
-            )) {
-              return true;
-            }
-          }
+    if (!this.lastMove) return false;
+
+    const [x, y] = this.lastMove;
+
+    for (const direction of ConnectFour.directions) {
+      const line = findLine(
+        [x, y], direction, 4,
+        this.bounds,
+        (coord) => this.board[coord[1]][coord[0]] === this.currentPlayer
+      );
+      if (line) {
+        for (const [x, y] of line) {
+          this.board[y][x] = "🟢";
         }
+        return true;
       }
     }
+
     return false;
   }
 
-  /**
-   * Print the board for debugging purposes, including caret position.
-   */
   printBoard() {
-    console.log(`Player ${this.currentPlayer}'s Turn`);
-    for (let row = 0; row < this.boardState.length; row++) {
-      let rowStr = '';
-      for (let col = 0; col < this.boardState[row].length; col++) {
-        // Mark caret position with an arrow '←' for visual clarity
-        if (this.caret.values[0] === col && this.caret.values[1] === row) {
-          rowStr += ' ← '; // Caret marker
-        } else {
-          rowStr += this.boardState[row][col] === '' ? ' . ' : ` ${this.boardState[row][col]} `;
-        }
-      }
-      console.log(rowStr);
+    console.clear(); // Clear + move cursor to top-left
+
+    let output = '';
+    output += `Player ${this.currentPlayer}'s Turn\n\n`;
+
+    // Caret row
+    for (let col = 0; col < this.board[0].length; col++) {
+      output += this.caret.values[0] === col ? ' ↓ ' : '   ';
     }
-    console.log(`Caret Position: Column ${this.caret.values[0] + 1}`);
+    output += '\n';
+
+    // Board grid
+    for (let row = 0; row < this.board.length; row++) {
+      for (let col = 0; col < this.board[row].length; col++) {
+        output += this.board[row][col] === '' ? ' . ' : `${this.board[row][col]} `;
+      }
+      output += '\n';
+    }
+    output += `\nCaret Position: Column ${this.caret.values[0] + 1}\n`;
+    console.log(output);
   }
 
-  /**
-   * Move the caret left or right.
-   * @param direction - 1 to move right, -1 to move left
-   */
   moveCaret(direction: 1 | -1) {
-    incrementAxis(this.caret, 0, direction); // Increment the x-axis (left or right)
+    offsetAxis(this.caret, 0, direction); // Increment the x-axis (left or right)
   }
 }
 
@@ -117,19 +100,23 @@ const rl = readline.createInterface({
   terminal: false,
 });
 
-const game = new ConnectFourWorld(7, 6); // 7 columns, 6 rows
+const game = new ConnectFour(7, 6);
 
-// Handle keyboard inputs for caret movement and piece placement
-rl.on('line', (input) => {
-  if (input === 'q') {
+// --- Input handling ---
+process.stdin.setRawMode(true);
+process.stdin.resume();
+process.stdin.setEncoding("utf8");
+
+process.stdin.on("data", (key: string) => {
+  const k = key.toLowerCase();
+
+  if (k === 'q') {
     console.log("Game over.");
     rl.close();
     return;
   }
-
-  if (input === 'w') {  // Drop piece (simulated with 'w' for simplicity)
+  if (k === 'w') {  // Drop piece
     if (game.dropPiece()) {
-      console.log("dropped 2");
       if (game.checkWin()) {
         game.printBoard();
         console.log(`${game.currentPlayer} wins!`);
@@ -138,14 +125,14 @@ rl.on('line', (input) => {
       }
       game.switchPlayer();
     }
-  } else if (input === 'a') {  // Move left
+  } else if (k === 'a') {  // Move left
     game.moveCaret(-1);
-  } else if (input === 'd') {  // Move right
+  } else if (k === 'd') {  // Move right
     game.moveCaret(1);
   }
 
   game.printBoard();
 });
 
-// Start the game by printing the board
+// Start
 game.printBoard();
