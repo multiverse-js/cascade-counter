@@ -74,6 +74,17 @@ class ConnectFour {
     return false;
   }
 
+  checkDraw(): boolean {
+    const width = this.board.bounds[0];
+
+    for (let x = 0; x < width; x++) {
+      if (this.board.isDefault([x, 0])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   printBoard() {
     console.clear();
 
@@ -116,6 +127,11 @@ process.stdin.on("data", (key: string) => {
       if (game.checkWin()) {
         game.printBoard();
         console.log(`${game.getCurrentPlayerToken()} wins!`);
+        rl.close();
+        return;
+      } else if (game.checkDraw()) {
+        game.printBoard();
+        console.log("It's a draw!");
         rl.close();
         return;
       }
