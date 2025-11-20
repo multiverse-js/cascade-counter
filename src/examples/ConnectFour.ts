@@ -31,10 +31,6 @@ class ConnectFour {
     offsetAxis(this.caret, 0, direction);
   }
 
-  getCurrentPlayerToken() {
-    return this.currentPlayer.mapDigit(0, PLAYER_TOKENS);
-  }
-
   switchPlayer() {
     this.currentPlayer.incrementAt();
   }
@@ -49,13 +45,13 @@ class ConnectFour {
     );
     if (!droppedCoord) return false;
 
-    this.board.set(droppedCoord, this.getCurrentPlayerToken());
+    this.board.set(droppedCoord, this.currentToken);
     this.lastMove = droppedCoord;
 
     return true;
   }
 
-  checkWin(): boolean {
+  isWin(): boolean {
     if (!this.lastMove) return false;
 
     for (const direction of DIRECTIONS) {
@@ -63,7 +59,7 @@ class ConnectFour {
         this.lastMove,
         direction, 4,
         this.board.bounds,
-        (coord) => this.board.get(coord) === this.getCurrentPlayerToken()
+        (coord) => this.board.get(coord) === this.currentToken
       );
 
       if (line) {
@@ -74,7 +70,7 @@ class ConnectFour {
     return false;
   }
 
-  checkDraw(): boolean {
+  isDraw(): boolean {
     const width = this.board.bounds[0];
 
     for (let x = 0; x < width; x++) {
@@ -85,10 +81,14 @@ class ConnectFour {
     return true;
   }
 
+  get currentToken(): string {
+    return this.currentPlayer.mapDigit(0, PLAYER_TOKENS);
+  }
+
   printBoard() {
     console.clear();
 
-    let output = `${this.getCurrentPlayerToken()}'s Turn\n\n`;
+    let output = `${this.currentToken}'s Turn\n\n`;
 
     const width = this.board.bounds[0];
     for (let col = 0; col < width; col++) {
@@ -102,48 +102,49 @@ class ConnectFour {
 
 // --- CLI wiring ---
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false,
-});
+function runCli(game: ConnectFour) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false
+  });
 
-const game = new ConnectFour(7, 6);
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (key: string) => {
+    const k = key.toLowerCase();
 
-process.stdin.setRawMode(true);
-process.stdin.resume();
-process.stdin.setEncoding("utf8");
-
-process.stdin.on("data", (key: string) => {
-  const k = key.toLowerCase();
-
-  if (k === "q") {
-    console.log("Game over.");
-    rl.close();
-    return;
-  }
-  if (k === "w") {
-    if (game.dropPiece()) {
-      if (game.checkWin()) {
-        game.printBoard();
-        console.log(`${game.getCurrentPlayerToken()} wins!`);
-        rl.close();
-        return;
-      } else if (game.checkDraw()) {
-        game.printBoard();
-        console.log("It's a draw!");
-        rl.close();
-        return;
-      }
-      game.switchPlayer();
+    if (k === "q") {
+      console.log("Game over.");
+      rl.close();
+      return;
     }
-  } else if (k === "a") {
-    game.moveCaret(-1);
-  } else if (k === "d") {
-    game.moveCaret(1);
-  }
+    if (k === "w") {
+      if (game.dropPiece()) {
+        if (game.isWin()) {
+          game.printBoard();
+          console.log(`${game.currentToken} wins!`);
+          rl.close();
+          return;
+        } else if (game.isDraw()) {
+          game.printBoard();
+          console.log("It's a draw!");
+          rl.close();
+          return;
+        }
+        game.switchPlayer();
+      }
+    } else if (k === "a") {
+      game.moveCaret(-1);
+    } else if (k === "d") {
+      game.moveCaret(1);
+    }
+
+    game.printBoard();
+  });
 
   game.printBoard();
-});
+}
 
-game.printBoard();
+runCli(new ConnectFour(7, 6));
