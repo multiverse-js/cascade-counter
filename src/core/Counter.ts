@@ -94,7 +94,7 @@ export class CascadeCounter {
     const {
       levels,
       initial,
-      wrapPolicy = CascadeCounter.NONE,
+      wrapPolicy = CascadeCounter.WRAP,
       allowNegativeTop = false,
     } = options;
 

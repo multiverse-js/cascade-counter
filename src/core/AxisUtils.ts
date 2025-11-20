@@ -38,14 +38,14 @@ export function setAxisClamped(counter: CascadeCounter, axis: number, value: num
 
 export function offsetAxis(counter: CascadeCounter, axis: number, delta: number): void {
   assertSafeInteger("offsetAxis", "delta", delta);
-
   if (delta === 0) return;
+
   setAxis(counter, axis, counter.getAt(axis) + delta);
 }
 
 export function offsetAxisClamped(counter: CascadeCounter, axis: number, delta: number): void {
   assertSafeInteger("offsetAxisClamped", "delta", delta);
-
   if (delta === 0) return;
+
   setAxisClamped(counter, axis, counter.getAt(axis) + delta);
 }
