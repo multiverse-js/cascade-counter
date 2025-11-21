@@ -1,6 +1,6 @@
 import * as readline from "readline";
 import { createKeyMap } from "../../mind/ActionMap";
-import { ConnectFourGame, ConnectFourEngine, ConnectFourAction, ConnectFourResult } from "./ConnectFour";
+import { ConnectFourGame, ConnectFourEngine, ConnectFourAction } from "./ConnectFour";
 
 const keyToAction = createKeyMap<ConnectFourAction>({
   a: { type: "moveLeft" },
@@ -23,7 +23,6 @@ class ConnectFourCLI extends ConnectFourGame {
     });
 
     this.engine = new ConnectFourEngine(this);
-
     this.setupInput();
   }
 

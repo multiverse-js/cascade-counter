@@ -16,7 +16,7 @@ const PLAYER_TOKENS = ["🔴", "🟡"] as const;
 const WIN_TOKEN = "🟢" as const;
 const DIRECTIONS: Coord[] = generateQuadrantVectors(2); // right, down, diags...
 
-type PlayerToken = (typeof PLAYER_TOKENS)[number];
+export type PlayerToken = (typeof PLAYER_TOKENS)[number];
 export type ConnectFourResult = "won" | "draw" | "quit";
 
 export type ConnectFourAction =
