@@ -1,7 +1,7 @@
 // A generic Action type with a discriminated union shape
-export interface Action<Type extends string = string> {
-  type: Type;
-  payload?: any;
+export interface Action<T extends string = string> {
+  type: T;
+  payload?: unknown;
 }
 
 // A reducer transforms a state given an action (pure function)

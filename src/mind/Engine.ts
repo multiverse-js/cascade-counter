@@ -23,9 +23,7 @@ export function createActionReducer<S, A extends Action>(
   return (state: S, action: A): S => {
     const handler = handlers[action.type];
 
-    if (!handler) return state;
-
-    return handler(state, action);
+    return handler ? handler(state, action) : state;
   };
 }
 
