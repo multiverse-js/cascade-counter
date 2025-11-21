@@ -16,10 +16,9 @@ class ConnectXConsole<T extends StringRenderable> {
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.engine = new ConnectXEngine(this.game);
-    this.setupInput();
   }
 
-  private setupInput() {
+  start() {
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.setEncoding("utf8");
@@ -38,6 +37,8 @@ class ConnectXConsole<T extends StringRenderable> {
         this.exit();
       }
     });
+
+    this.render();
   }
 
   render() {
@@ -66,7 +67,7 @@ class ConnectXConsole<T extends StringRenderable> {
   }
 }
 
-const cli = new ConnectXConsole({
+const game = new ConnectXConsole({
   boardWidth: 7,
   boardHeight: 6,
   playerTokens: ["🔴", "🟡"],
@@ -75,4 +76,4 @@ const cli = new ConnectXConsole({
   winLength: 4
 });
 
-cli.render();
+game.start();
