@@ -77,3 +77,5 @@ export type IterateDirection = "forward" | "backward";
 export type MinOptions = {
   zeroIsMin?: boolean
 };
+
+export type StringRenderable = { toString(): string };

@@ -1,3 +1,4 @@
+import { StringRenderable } from "../../soul/types";
 import { CascadeCounter } from "../../soul/Counter";
 import { offsetAxis } from "../../soul/Axis";
 
@@ -14,17 +15,17 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 // Types & interfaces
 // ---------------------------------------------------------------------------
 
-export interface ConnectXSettings {
-  boardWidth?: number;
-  boardHeight?: number;
-  playerTokens?: ReadonlyArray<string>;
-  emptyToken?: string;
-  winToken?: string;
-  winLength?: number;
+export interface ConnectXSettings<T> {
+  boardWidth: number;
+  boardHeight: number;
+  playerTokens: ReadonlyArray<T>;
+  emptyToken: T;
+  winToken: T;
+  winLength: number;
 }
 
-export interface ConnectXState {
-  readonly board: DenseWorld<string>;
+export interface ConnectXState<T> {
+  readonly board: DenseWorld<T>;
   readonly boardCursor: CascadeCounter;
   readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
@@ -43,30 +44,18 @@ export type ConnectXAction =
 
 const DIRECTIONS = generateQuadrantVectors(2); // right, down, diags...
 
-const DEFAULT_SETTINGS = {
-  boardWidth: 7,
-  boardHeight: 6,
-  playerTokens: ["🔴", "🟡"],
-  emptyToken: ".",
-  winToken: "🟢",
-  winLength: 4
-} satisfies Required<ConnectXSettings>;
-
 // ---------------------------------------------------------------------------
 // Core game logic (engine-agnostic)
 // ---------------------------------------------------------------------------
 
-export class ConnectXGame {
-  readonly settings: Required<ConnectXSettings>;
-  readonly state: ConnectXState;
+export class ConnectXGame<T extends StringRenderable> {
+  readonly settings: ConnectXSettings<T>;
+  readonly state: ConnectXState<T>;
 
-  constructor(settings: ConnectXSettings = {}) {
-    this.settings = {
-      ...DEFAULT_SETTINGS,
-      ...settings
-    };;
+  constructor(settings: ConnectXSettings<T>) {
+    this.settings = settings;
     this.state = {
-      board: new DenseWorld<string>({
+      board: new DenseWorld<T>({
         bounds: [this.settings.boardWidth, this.settings.boardHeight],
         strictBounds: true,
         defaultValue: this.settings.emptyToken
@@ -138,7 +127,7 @@ export class ConnectXGame {
     return true;
   }
 
-  get currentPlayerToken(): string {
+  get currentPlayerToken(): T {
     return this.settings.playerTokens[this.state.playerCursor.values[0]];
   }
 
@@ -160,7 +149,7 @@ export class ConnectXGame {
 // Reducer: Actions → state transitions
 // ---------------------------------------------------------------------------
 
-export const connectXReducer = createActionReducer<ConnectXGame, ConnectXAction>({
+export const connectXReducer = createActionReducer<ConnectXGame<any>, ConnectXAction>({
   moveLeft(game) {
     if (game.state.outcome) return game;
 
@@ -200,12 +189,12 @@ export const connectXReducer = createActionReducer<ConnectXGame, ConnectXAction>
 // Engine wrapper (game logic + reducer)
 // ---------------------------------------------------------------------------
 
-export class ConnectXEngine extends Engine<
-  ConnectXGame,
-  ConnectXState,
+export class ConnectXEngine<T extends StringRenderable> extends Engine<
+  ConnectXGame<T>,
+  ConnectXState<T>,
   ConnectXAction
 > {
-  constructor(game: ConnectXGame) {
+  constructor(game: ConnectXGame<T>) {
     super(game, game.state, connectXReducer);
   }
 }

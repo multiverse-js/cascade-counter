@@ -1,3 +1,4 @@
+import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
 import { ConnectXGame, ConnectXSettings, ConnectXEngine, ConnectXAction } from "./ConnectX";
 
@@ -8,11 +9,11 @@ const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
-class ConnectXConsole {
-  private readonly game: ConnectXGame;
-  private readonly engine: ConnectXEngine;
+class ConnectXConsole<T extends StringRenderable> {
+  private readonly game: ConnectXGame<T>;
+  private readonly engine: ConnectXEngine<T>;
 
-  constructor(settings: ConnectXSettings = {}) {
+  constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.engine = new ConnectXEngine(this.game);
     this.setupInput();
@@ -66,9 +67,12 @@ class ConnectXConsole {
 }
 
 const cli = new ConnectXConsole({
-  //boardWidth: 21,
-  //boardHeight: 18,
-  //playerTokens: ["🔴", "🟡", "🟣"],
+  boardWidth: 7,
+  boardHeight: 6,
+  playerTokens: ["🔴", "🟡"],
+  emptyToken: ".",
+  winToken: "🟢",
+  winLength: 4
 });
 
 cli.render();
