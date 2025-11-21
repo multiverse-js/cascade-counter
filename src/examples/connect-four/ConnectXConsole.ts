@@ -1,4 +1,4 @@
-import { createKeyMap } from "../../mind/ActionMap";
+import { createKeyMap } from "../../mind/Reducer";
 import { ConnectXGame, ConnectXSettings, ConnectXEngine, ConnectXAction } from "./ConnectX";
 
 const keyToAction = createKeyMap<ConnectXAction>({
@@ -25,7 +25,7 @@ class ConnectXConsole {
 
     process.stdin.on("data", (key: string) => {
       if (key === "\u0003") { // Ctrl+C
-        this.exit("Interrupted.");
+        this.endGame("Interrupted");
         return;
       }
       const action = keyToAction.match(key.toLowerCase());
@@ -34,43 +34,31 @@ class ConnectXConsole {
       this.engine.dispatch(action);
       this.render();
 
-      const message = this.resultMessage;
-      if (message !== null) this.exit(message);
+      if (this.game.state.outcome) {
+        this.endGame(this.game.outcomeMessage);
+      }
     });
   }
 
   render() {
     console.clear();
 
-    const { board, cursor } = this.game.state;
+    const { board, boardCursor } = this.game.state;
     const [width] = board.bounds;
 
     let output = `${this.game.currentPlayerToken}'s Turn\n\n`;
 
     for (let col = 0; col < width; col++) {
-      output += cursor.values[0] === col ? " ↓ " : "   ";
+      output += boardCursor.values[0] === col ? " ↓ " : "   ";
     }
     output += "\n" + board.toString(" ") + "\n";
-    output += `Cursor Position: Column ${cursor.values[0] + 1}`;
+    output += `Cursor Position: Column ${boardCursor.values[0] + 1}`;
     output += "\nControls: A = left, D = right, W = drop, Q = quit\n";
 
     console.log(output);
   }
 
-  private get resultMessage(): string | null {
-    switch (this.game.state.result) {
-      case "win":
-        return `${this.game.currentPlayerToken} wins!`;
-      case "draw":
-        return "It's a draw!";
-      case "quit":
-        return "Quit.";
-      default:
-        return null;
-    }
-  }
-
-  private exit(message: string) {
+  private endGame(message: string) {
     process.stdin.setRawMode(false);
     process.stdin.pause();
     console.log(`Game over: ${message}`);
@@ -79,9 +67,9 @@ class ConnectXConsole {
 }
 
 const cli = new ConnectXConsole({
-  boardWidth: 21,
-  boardHeight: 18,
-  playerTokens: ["🔴", "🟡"],
+  //boardWidth: 21,
+  //boardHeight: 18,
+  //playerTokens: ["🔴", "🟡", "🟣"],
 });
 
 cli.render();

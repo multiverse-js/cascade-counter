@@ -1,11 +1,12 @@
-import { Action, Reducer, ActionHandlers } from "./types";
-
-export type ActionMap<E, A extends Action> = {
-  match: (event: E) => A | null; 
-};
+import type {
+  Action,
+  ActionHandlers,
+  ActionMap,
+  Reducer
+} from "./types";
 
 // Produces a reducer from { type: handler } mapping
-export function createReducer<S, A extends Action>(
+export function createActionReducer<S, A extends Action>(
   handlers: ActionHandlers<S, A>
 ): Reducer<S, A> {
   return function reducer(state: S, action: A): S {

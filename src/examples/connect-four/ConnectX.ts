@@ -6,7 +6,7 @@ import { DenseWorld } from "../../reality/DenseWorld";
 import { Coord } from "../../space/types";
 import { Action } from "../../mind/types";
 import { Engine } from "../../mind/Engine";
-import { createReducer } from "../../mind/ActionMap";
+import { createActionReducer } from "../../mind/Reducer";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -23,10 +23,10 @@ export interface ConnectXSettings {
 
 export interface ConnectXState {
   readonly board: DenseWorld<string>;
-  readonly cursor: CascadeCounter;
-  readonly currentPlayer: CascadeCounter;
+  readonly boardCursor: CascadeCounter;
+  readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
-  result?: ConnectXResult;
+  outcome?: "win" | "draw" | "quit";
 }
 
 export type ConnectXAction =
@@ -34,8 +34,6 @@ export type ConnectXAction =
   | Action<"moveRight">
   | Action<"dropPiece">
   | Action<"quit">;
-
-export type ConnectXResult = "win" | "draw" | "quit";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -71,32 +69,28 @@ export class ConnectXGame {
         strictBounds: true,
         defaultValue: this.settings.emptyToken
       }),
-      cursor: CascadeCounter.fromFixedBases(
+      boardCursor: CascadeCounter.fromFixedBases(
         [this.settings.boardWidth]
       ),
-      currentPlayer: CascadeCounter.fromFixedBases(
+      playerCursor: CascadeCounter.fromFixedBases(
         [this.settings.playerTokens.length]
       )
     };
   }
 
   moveCursor(direction: 1 | -1): void {
-    offsetAxis(this.state.cursor, 0, direction);
+    offsetAxis(this.state.boardCursor, 0, direction);
   }
 
   switchPlayer(): void {
-    this.state.currentPlayer.incrementAt();
-  }
-
-  get currentPlayerToken(): string {
-    return this.settings.playerTokens[this.state.currentPlayer.values[0]];
+    this.state.playerCursor.incrementAt();
   }
 
   dropPiece(): boolean {
-    const { cursor, board } = this.state;
+    const { boardCursor, board } = this.state;
 
     const droppedCoord = dropAlongAxis(
-      [cursor.values[0], 0],               // (x, y = 0)
+      [boardCursor.values[0], 0],               // (x, y = 0)
       1,                                  // axis 1 = y
       1,                                  // gravity down
       board.bounds,                       // board boundaries
@@ -141,38 +135,61 @@ export class ConnectXGame {
     }
     return true;
   }
+
+  get currentPlayerToken(): string {
+    return this.settings.playerTokens[this.state.playerCursor.values[0]];
+  }
+
+  get outcomeMessage(): string {
+    switch (this.state.outcome) {
+      case "win":
+        return `${this.currentPlayerToken} wins!`;
+      case "draw":
+        return "It's a draw!";
+      case "quit":
+        return "Quit";
+      default:
+        return "Unexpected error";
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Reducer: Actions → state transitions
 // ---------------------------------------------------------------------------
 
-export const connectXReducer = createReducer<ConnectXGame, ConnectXAction>({
+export const connectXReducer = createActionReducer<ConnectXGame, ConnectXAction>({
   moveLeft(game) {
-    if (!game.state.result) game.moveCursor(-1);
+    if (game.state.outcome) return game;
+
+    game.moveCursor(-1);
     return game;
   },
 
   moveRight(game) {
-    if (!game.state.result) game.moveCursor(1);
+    if (game.state.outcome) return game;
+
+    game.moveCursor(1);
     return game;
   },
 
   dropPiece(game) {
-    if (!game.state.result && game.dropPiece()) {
-      if (game.isWin()) {
-        game.state.result = "win";
-      } else if (game.isDraw()) {
-        game.state.result = "draw";
-      } else {
-        game.switchPlayer();
-      }
+    if (game.state.outcome) return game;
+    if (!game.dropPiece()) return game;
+
+    if (game.isWin()) {
+      game.state.outcome = "win";
+    } else if (game.isDraw()) {
+      game.state.outcome = "draw";
+    } else {
+      game.switchPlayer();
     }
+
     return game;
   },
 
   quit(game) {
-    game.state.result = "quit";
+    game.state.outcome = "quit";
     return game;
   }
 });

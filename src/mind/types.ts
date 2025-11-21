@@ -29,3 +29,7 @@ export type StateOf<T> = T extends HasState<infer S> ? S : T;
 export function isHasState<S>(value: StateLike<S>): value is HasState<S> {
   return typeof value === "object" && value !== null && "state" in value;
 }
+
+export type ActionMap<E, A extends Action> = {
+  match: (event: E) => A | null; 
+};
