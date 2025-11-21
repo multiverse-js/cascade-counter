@@ -1,12 +1,14 @@
 import { CascadeCounter } from "../../soul/Counter";
 import { offsetAxis } from "../../soul/Axis";
+
+import { Coord } from "../../space/types";
 import { dropAlongAxis, findLine } from "../../space/Space";
 import { generateQuadrantVectors } from "../../space/Vector";
+
 import { DenseWorld } from "../../reality/DenseWorld";
-import { Coord } from "../../space/types";
+
 import { Action } from "../../mind/types";
-import { Engine } from "../../mind/Engine";
-import { createActionReducer } from "../../mind/Reducer";
+import { Engine, createActionReducer } from "../../mind/Engine";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -149,7 +151,7 @@ export class ConnectXGame {
       case "quit":
         return "Quit";
       default:
-        return "Unexpected error";
+        return "Interrupted";
     }
   }
 }
@@ -199,11 +201,11 @@ export const connectXReducer = createActionReducer<ConnectXGame, ConnectXAction>
 // ---------------------------------------------------------------------------
 
 export class ConnectXEngine extends Engine<
-  ConnectXState,
   ConnectXGame,
+  ConnectXState,
   ConnectXAction
 > {
   constructor(game: ConnectXGame) {
-    super(game, connectXReducer);
+    super(game, game.state, connectXReducer);
   }
 }

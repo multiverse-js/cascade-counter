@@ -1,25 +1,41 @@
-import { StateLike, Action, Reducer, StateOf, isHasState } from "./types";
+import type { Action, Reducer, ActionHandlers, ActionMap } from "./types";
 
-export class Engine<S, Target extends StateLike<S>, A extends Action> {
+export class Engine<Target, State, A extends Action> {
   protected target: Target;
+  protected state: State;
   protected readonly reducer: Reducer<Target, A>;
 
-  constructor(target: Target, reducer: Reducer<Target, A>) {
+  constructor(target: Target, state: State, reducer: Reducer<Target, A>) {
     this.target = target;
+    this.state = state;
     this.reducer = reducer;
   }
 
-  get state(): StateOf<Target> {
-    if (isHasState(this.target)) {
-      // here TS knows: this.target is HasState<something>
-      return this.target.state as StateOf<Target>;
-    }
-    // here it's the raw state type
-    return this.target as StateOf<Target>;
-  }
-
-  dispatch(action: A): StateOf<Target> {
+  dispatch(action: A): State {
     this.target = this.reducer(this.target, action);
     return this.state;
   }
+}
+
+export function createActionReducer<S, A extends Action>(
+  handlers: ActionHandlers<S, A>
+): Reducer<S, A> {
+  return function reducer(state: S, action: A): S {
+    // Tell TS that action.type is one of the handler keys
+    const key = action.type as keyof typeof handlers;
+    const handler = handlers[key] as ((state: S, action: A) => S);
+
+    return handler ? handler(state, action) : state;
+  };
+}
+
+// Create a simple key → action mapping
+export function createKeyMap<A extends Action>(
+  keyBindings: Record<string, A>
+): ActionMap<string, A> {
+  return {
+    match(key: string) {
+      return keyBindings[key] ?? null;
+    }
+  };
 }

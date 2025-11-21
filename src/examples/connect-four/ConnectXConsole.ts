@@ -1,7 +1,7 @@
-import { createKeyMap } from "../../mind/Reducer";
+import { createKeyMap } from "../../mind/Engine";
 import { ConnectXGame, ConnectXSettings, ConnectXEngine, ConnectXAction } from "./ConnectX";
 
-const keyToAction = createKeyMap<ConnectXAction>({
+const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
   a: { type: "moveLeft" },
   d: { type: "moveRight" },
   w: { type: "dropPiece" },
@@ -24,18 +24,17 @@ class ConnectXConsole {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      if (key === "\u0003") { // Ctrl+C
-        this.endGame("Interrupted");
-        return;
+      if (key === "\u0003") {
+        this.exit();
       }
-      const action = keyToAction.match(key.toLowerCase());
+      const action = KEY_TO_ACTION.match(key.toLowerCase());
       if (!action) return;
 
       this.engine.dispatch(action);
       this.render();
 
       if (this.game.state.outcome) {
-        this.endGame(this.game.outcomeMessage);
+        this.exit();
       }
     });
   }
@@ -58,10 +57,10 @@ class ConnectXConsole {
     console.log(output);
   }
 
-  private endGame(message: string) {
+  private exit() {
     process.stdin.setRawMode(false);
     process.stdin.pause();
-    console.log(`Game over: ${message}`);
+    console.log(`Game over: ${this.game.outcomeMessage}`);
     process.exit(0);
   }
 }
