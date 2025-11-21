@@ -40,6 +40,8 @@ export interface World<T> {
 
   /** Linear index → coordinate. */
   fromIndex(index: number): Coord;
+
+  //get values(): T;
 }
 
 /**
@@ -70,8 +72,8 @@ export abstract class BaseWorld<T> implements World<T> {
   }
 
   drawLine(line: Coord[], value: T) {
-    for (const [lx, ly] of line) {
-      this.set([lx, ly], value);
+    for (const [x, y] of line) {
+      this.set([x, y], value);
     }
   }
 
@@ -138,6 +140,7 @@ export abstract class BaseWorld<T> implements World<T> {
   abstract delete(coord: Coord): void;
   abstract clear(): void;
   abstract forEach(fn: (value: T, coord: Coord) => void): void;
+  //abstract get values(): T;
 }
 
 /** Compute row-major strides: [1, b0, b0*b1, ...] */

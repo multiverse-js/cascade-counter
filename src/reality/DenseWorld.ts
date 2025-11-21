@@ -97,4 +97,8 @@ export class DenseWorld<T> extends BaseWorld<T> {
     }
     return out;
   }
+
+  // get values() {
+  //   return this.data;
+  // }
 }

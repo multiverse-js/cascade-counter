@@ -45,4 +45,8 @@ export class SparseWorld<T> extends BaseWorld<T> {
       fn(value, coord);
     }
   }
+
+  // get values() {
+  //   return this.cells;
+  // }
 }

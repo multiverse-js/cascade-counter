@@ -4,14 +4,14 @@ export type Coord = ReadonlyArray<number>;
 /** Per-axis sizes for a bounded world, e.g. [width, height, depth]. */
 export type Bounds = ReadonlyArray<number>;
 
-export type WorldBackendKind = "dense" | "sparse";
+export type WorldBackend = "dense" | "sparse";
 
 export interface WorldOptions<T> {
   /** Size of each axis, e.g. [width, height] or [width, height, time]. */
   bounds: Bounds;
 
   /** Backend representation. Dense = flat array; sparse = Map. */
-  backend?: WorldBackendKind;
+  backend?: WorldBackend;
 
   /** Optional default value for dense worlds; sparse worlds treat "missing" as empty. */
   defaultValue?: T;
