@@ -38,7 +38,7 @@ export interface ConnectFourState {
 // Core game logic (engine-agnostic)
 // ---------------------------------------------------------------------------
 
-export abstract class ConnectFourGame {
+export class ConnectFourGame {
   readonly state: ConnectFourState;
 
   constructor(boardWidth: number, boardHeight: number) {
@@ -120,16 +120,12 @@ export abstract class ConnectFourGame {
 
 export const connectFourReducer = createReducer<ConnectFourGame, ConnectFourAction>({
   moveLeft(game) {
-    if (!game.state.result) {
-      game.moveCaret(-1);
-    }
+    if (!game.state.result) game.moveCaret(-1);
     return game;
   },
 
   moveRight(game) {
-    if (!game.state.result) {
-      game.moveCaret(1);
-    }
+    if (!game.state.result) game.moveCaret(1);
     return game;
   },
 
@@ -157,7 +153,11 @@ export const connectFourReducer = createReducer<ConnectFourGame, ConnectFourActi
 // Engine wrapper (game logic + reducer)
 // ---------------------------------------------------------------------------
 
-export class ConnectFourEngine extends Engine<ConnectFourState, ConnectFourGame, ConnectFourAction> {
+export class ConnectFourEngine extends Engine<
+  ConnectFourState,
+  ConnectFourGame,
+  ConnectFourAction
+> {
   constructor(game: ConnectFourGame) {
     super(game, connectFourReducer);
   }
