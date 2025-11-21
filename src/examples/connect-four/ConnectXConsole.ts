@@ -43,15 +43,14 @@ class ConnectXConsole {
     console.clear();
 
     const { board, cursor } = this.game.state;
-    const width = board.bounds[0];
+    const [width] = board.bounds;
 
-    let output = `${this.game.currentPlayerMap.symbol}'s Turn\n\n`;
+    let output = `${this.game.currentPlayerToken}'s Turn\n\n`;
 
     for (let col = 0; col < width; col++) {
       output += cursor.values[0] === col ? " ↓ " : "   ";
     }
-    output += "\n"
-    output += board.toString(" ") + "\n";
+    output += "\n" + board.toString(" ") + "\n";
     output += `Cursor Position: Column ${cursor.values[0] + 1}`;
     output += "\nControls: A = left, D = right, W = drop, Q = quit\n";
 
@@ -59,11 +58,9 @@ class ConnectXConsole {
   }
 
   private get resultMessage(): string | null {
-    const { result, winnerToken } = this.game.state;
-
-    switch (result) {
+    switch (this.game.state.result) {
       case "win":
-        return `${winnerToken} wins!`;
+        return `${this.game.currentPlayerToken} wins!`;
       case "draw":
         return "It's a draw!";
       case "quit":

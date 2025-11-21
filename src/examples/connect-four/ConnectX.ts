@@ -1,6 +1,5 @@
 import { CascadeCounter } from "../../soul/Counter";
 import { offsetAxis } from "../../soul/Axis";
-import { TokenMap } from "../../soul/TokenMap";
 import { dropAlongAxis, findLine } from "../../space/Space";
 import { generateQuadrantVectors } from "../../space/Vector";
 import { DenseWorld } from "../../reality/DenseWorld";
@@ -28,7 +27,6 @@ export interface ConnectXState {
   readonly currentPlayer: CascadeCounter;
   lastMove?: Coord;
   result?: ConnectXResult;
-  winnerToken?: string;
 }
 
 export type ConnectXAction =
@@ -61,12 +59,11 @@ const DEFAULT_SETTINGS = {
 export class ConnectXGame {
   readonly settings: Required<ConnectXSettings>;
   readonly state: ConnectXState;
-  readonly currentPlayerMap: TokenMap<string>;
 
   constructor(settings: ConnectXSettings = {}) {
     this.settings = {
       ...DEFAULT_SETTINGS,
-      ...settings,
+      ...settings
     };;
     this.state = {
       board: new DenseWorld<string>({
@@ -81,18 +78,18 @@ export class ConnectXGame {
         [this.settings.playerTokens.length]
       )
     };
-    this.currentPlayerMap = new TokenMap(
-      this.state.currentPlayer, 0,
-      this.settings.playerTokens
-    );
   }
 
-  movecursor(direction: 1 | -1): void {
+  moveCursor(direction: 1 | -1): void {
     offsetAxis(this.state.cursor, 0, direction);
   }
 
   switchPlayer(): void {
     this.state.currentPlayer.incrementAt();
+  }
+
+  get currentPlayerToken(): string {
+    return this.settings.playerTokens[this.state.currentPlayer.values[0]];
   }
 
   dropPiece(): boolean {
@@ -107,7 +104,7 @@ export class ConnectXGame {
     );
     if (!droppedCoord) return false;
 
-    board.set(droppedCoord, this.currentPlayerMap.symbol);
+    board.set(droppedCoord, this.currentPlayerToken);
     this.state.lastMove = droppedCoord;
 
     return true;
@@ -124,7 +121,7 @@ export class ConnectXGame {
         direction,
         this.settings.winLength,
         board.bounds,
-        (coord) => board.get(coord) === this.currentPlayerMap.symbol
+        (coord) => board.get(coord) === this.currentPlayerToken
       );
 
       if (line) {
@@ -152,12 +149,12 @@ export class ConnectXGame {
 
 export const connectXReducer = createReducer<ConnectXGame, ConnectXAction>({
   moveLeft(game) {
-    if (!game.state.result) game.movecursor(-1);
+    if (!game.state.result) game.moveCursor(-1);
     return game;
   },
 
   moveRight(game) {
-    if (!game.state.result) game.movecursor(1);
+    if (!game.state.result) game.moveCursor(1);
     return game;
   },
 
@@ -165,7 +162,6 @@ export const connectXReducer = createReducer<ConnectXGame, ConnectXAction>({
     if (!game.state.result && game.dropPiece()) {
       if (game.isWin()) {
         game.state.result = "win";
-        game.state.winnerToken = game.currentPlayerMap.symbol;
       } else if (game.isDraw()) {
         game.state.result = "draw";
       } else {
