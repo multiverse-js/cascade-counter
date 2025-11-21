@@ -1,5 +1,5 @@
-import { CascadeCounter } from "../core/Counter";
-import { offsetAxisClamped } from "../core/AxisUtils";
+import { CascadeCounter } from "../soul/Counter";
+import { offsetAxisClamped } from "../soul/Axis";
 import process from "node:process";
 
 const WIDTH = 10;

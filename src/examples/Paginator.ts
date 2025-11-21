@@ -1,4 +1,4 @@
-import { CascadeCounter } from "../core/Counter";
+import { CascadeCounter } from "../soul/Counter";
 
 const TOTAL_PAGES = 20;
 

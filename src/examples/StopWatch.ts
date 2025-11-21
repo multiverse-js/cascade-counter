@@ -1,4 +1,4 @@
-import { CascadeCounter } from "../core/Counter";
+import { CascadeCounter } from "../soul/Counter";
 
 // Mixed-radix time:
 // [ms, sec, min, hours]

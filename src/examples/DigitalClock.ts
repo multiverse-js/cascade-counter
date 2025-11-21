@@ -1,4 +1,4 @@
-import { CascadeCounter } from "../core/Counter";
+import { CascadeCounter } from "../soul/Counter";
 
 // Create a counter with fixed bases: 60s, 60m, 24h
 const clock = CascadeCounter.fromFixedBases([60, 60, 24], {

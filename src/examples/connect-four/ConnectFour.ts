@@ -2,7 +2,7 @@ import { CascadeCounter } from "../../soul/Counter";
 import { offsetAxis } from "../../soul/Axis";
 import { dropAlongAxis, findLine } from "../../space/Space";
 import { generateQuadrantVectors } from "../../space/Vector";
-import { DenseWorld } from "../../world/DenseWorld";
+import { DenseWorld } from "../../reality/DenseWorld";
 import { Coord } from "../../space/types";
 import { Action } from "../../mind/types";
 import { Engine } from "../../mind/Engine";
@@ -17,7 +17,7 @@ const WIN_TOKEN = "🟢" as const;
 const DIRECTIONS: Coord[] = generateQuadrantVectors(2); // right, down, diags...
 
 type PlayerToken = (typeof PLAYER_TOKENS)[number];
-type GameResult = "won" | "draw" | "quit";
+export type ConnectFourResult = "won" | "draw" | "quit";
 
 export type ConnectFourAction =
   | Action<"moveLeft">
@@ -29,9 +29,9 @@ export interface ConnectFourState {
   readonly board: DenseWorld<string>;
   readonly caret: CascadeCounter;
   readonly currentPlayer: CascadeCounter;
-  lastMove: Coord | null;
-  result: GameResult | null;
-  winnerToken: PlayerToken | null;
+  lastMove: Coord | undefined;
+  result: ConnectFourResult | undefined;
+  winnerToken: PlayerToken | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,9 +50,9 @@ export abstract class ConnectFourGame {
       }),
       caret: CascadeCounter.fromFixedBases([boardWidth]),
       currentPlayer: CascadeCounter.fromFixedBases([2]),
-      lastMove: null,
-      result: null,
-      winnerToken: null
+      lastMove: undefined,
+      result: undefined,
+      winnerToken: undefined
     };
   }
 
@@ -112,8 +112,6 @@ export abstract class ConnectFourGame {
   get currentToken(): PlayerToken {
     return this.state.currentPlayer.mapDigit(0, PLAYER_TOKENS);
   }
-
-  abstract quit(): void;
 }
 
 // ---------------------------------------------------------------------------

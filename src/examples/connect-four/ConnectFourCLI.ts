@@ -1,6 +1,6 @@
 import * as readline from "readline";
 import { createKeyMap } from "../../mind/ActionMap";
-import { ConnectFourGame, ConnectFourEngine, ConnectFourAction } from "./ConnectFour";
+import { ConnectFourGame, ConnectFourEngine, ConnectFourAction, ConnectFourResult } from "./ConnectFour";
 
 const keyToAction = createKeyMap<ConnectFourAction>({
   a: { type: "moveLeft" },
@@ -27,7 +27,7 @@ class ConnectFourCLI extends ConnectFourGame {
     this.setupInput();
   }
 
-  private setupInput(): void {
+  private setupInput() {
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.setEncoding("utf8");
@@ -36,32 +36,16 @@ class ConnectFourCLI extends ConnectFourGame {
       const k = key.toLowerCase();
       const action = keyToAction.match(k);
       if (!action) return;
-      this.tick(action);
+
+      this.engine.dispatch(action);
       this.render();
     });
   }
 
-  private tick(action: ConnectFourAction): void {
-    const state = this.engine.dispatch(action);
-
-    if (state.result === "won") {
-      console.log(`${state.winnerToken} wins!`);
-      this.render();
-      this.quit();
-    } else if (state.result === "draw") {
-      console.log("It's a draw!");
-      this.render();
-      this.quit();
-    } else if (state.result === "quit") {
-      this.render();
-      this.quit();
-    }
-  }
-
-  render(): void {
+  render() {
     console.clear();
 
-    const { board, caret } = this.state;
+    const { board, caret, result, winnerToken } = this.state;
     const width = board.bounds[0];
 
     let output = `${this.currentToken}'s Turn\n\n`;
@@ -74,13 +58,21 @@ class ConnectFourCLI extends ConnectFourGame {
     output += `Caret Position: Column ${caret.values[0] + 1}\n`;
 
     console.log(output);
+
+    if (result === "won") {
+      this.exit(`${winnerToken} wins!`);
+    } else if (result === "draw") {
+      this.exit("It's a draw!");
+    } else if (result === "quit") {
+      this.exit("Game over.");
+    }
   }
 
-  quit(): void {
+  private exit(message: string) {
     process.stdin.setRawMode(false);
     process.stdin.pause();
     this.rl.close();
-    console.log("Game over.");
+    console.log(message);
     process.exit(0);
   }
 }
