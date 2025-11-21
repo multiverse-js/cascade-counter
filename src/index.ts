@@ -1,7 +1,7 @@
-export * from "./core/Counter";
-export * from "./core/Axis";
+export * from "./soul/Counter";
+export * from "./soul/Axis";
 
-export { Resolvers } from "./core/BaseResolverFactory";
+export { Resolvers } from "./soul/BaseResolverFactory";
 
 export type {
   CascadeCounterOptions,
@@ -11,7 +11,7 @@ export type {
   NamedBaseResolver,
   PartialBaseResolver,
   BaseRules
-} from "./core/types";
+} from "./soul/types";
 
 export * from "./space/Space";
 export * from "./space/Distance";

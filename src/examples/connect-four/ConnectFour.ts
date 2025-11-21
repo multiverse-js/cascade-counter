@@ -1,12 +1,12 @@
-import { CascadeCounter } from "../../core/Counter";
-import { offsetAxis } from "../../core/Axis";
+import { CascadeCounter } from "../../soul/Counter";
+import { offsetAxis } from "../../soul/Axis";
 import { dropAlongAxis, findLine } from "../../space/Space";
 import { generateQuadrantVectors } from "../../space/Vector";
 import { DenseWorld } from "../../world/DenseWorld";
 import { Coord } from "../../space/types";
-import { Action } from "../../action/types";
-import { Engine } from "../../action/Engine";
-import { createReducer } from "../../action/ActionMap";
+import { Action } from "../../mind/types";
+import { Engine } from "../../mind/Engine";
+import { createReducer } from "../../mind/ActionMap";
 
 // ---------------------------------------------------------------------------
 // Types & constants
