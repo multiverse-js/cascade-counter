@@ -1,4 +1,4 @@
-import { assertEquals } from "../core/AssertUtils";
+import { assertEquals } from "../utils/AssertUtils";
 import { Coord } from "./types";
 
 export function manhattan(a: Coord, b: Coord): number {

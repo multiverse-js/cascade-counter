@@ -1,4 +1,4 @@
-import { mapNonEmpty } from "./MiscUtils";
+import { mapNonEmpty } from "../utils/MiscUtils";
 
 import type {
   BaseRules,
@@ -13,7 +13,7 @@ import type {
 import {
   assertBaseRuleValid,
   assertSafeIntegerInRangeInclusive
-} from "./AssertUtils";
+} from "../utils/AssertUtils";
 
 function createBaseResolver(
   rules: NonEmptyReadonlyArray<BaseRules>,

@@ -62,7 +62,7 @@ export class DenseWorld<T> extends BaseWorld<T> {
     }
   }
 
-  isDefault(coord: Coord): boolean {
+  isEmpty(coord: Coord): boolean {
     return this.get(coord) === this.defaultValue;
   }
 

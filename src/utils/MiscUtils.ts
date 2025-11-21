@@ -1,4 +1,4 @@
-import type { NonEmptyReadonlyArray } from "./types";
+import type { NonEmptyReadonlyArray } from "../core/types";
 
 export const clampToRange = (v: number, min: number, max: number): number => v < min ? min : v > max ? max : v;
 

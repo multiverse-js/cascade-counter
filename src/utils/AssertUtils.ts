@@ -1,4 +1,4 @@
-import type { BaseRules } from "./types";
+import type { BaseRules } from "../core/types";
 
 export type SafePositiveInteger = number & { __brand: "SafePositiveInteger" };
 

@@ -1,10 +1,10 @@
 import { CascadeCounter } from "./Counter";
-import { posMod, clampToRange } from "./MiscUtils";
+import { posMod, clampToRange } from "../utils/MiscUtils";
 
 import {
   assertSafeIntegerInRangeInclusive,
   assertSafeInteger,
-} from "./AssertUtils";
+} from "../utils/AssertUtils";
 
 function assertValidAxis(fn: string, counter: CascadeCounter, axis: number) {
   assertSafeIntegerInRangeInclusive(fn, "axis", axis, 0, counter.size - 1);

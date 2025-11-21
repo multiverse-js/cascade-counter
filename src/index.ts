@@ -1,5 +1,5 @@
 export * from "./core/Counter";
-export * from "./core/AxisUtils";
+export * from "./core/Axis";
 
 export { Resolvers } from "./core/BaseResolverFactory";
 

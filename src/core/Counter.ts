@@ -2,7 +2,7 @@ import {
   clampToRange,
   posMod,
   arraysEqual
-} from "./MiscUtils";
+} from "../utils/MiscUtils";
 
 import { WRAP_POLICY } from "./types";
 
@@ -22,7 +22,7 @@ import {
   assertEquals,
   assertLessThan,
   type SafePositiveInteger
-} from "./AssertUtils";
+} from "../utils/AssertUtils";
 
 /**
  * A generalized **mixed-radix counter** supporting dynamic per-level bases,
@@ -639,7 +639,7 @@ export class CascadeCounter {
    *
    * `alphabet.length` must be >= base at that level.
    */
-  mapDigit<T>(level: number, alphabet: readonly T[]): T {
+  mapDigit<T>(level: number, alphabet: ReadonlyArray<T>): T {
     this._assertValidLevel(level, "mapDigit");
 
     const base = this.getBaseAt(level);

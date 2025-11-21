@@ -1,4 +1,4 @@
-import { hasNonZeroValue } from "../core/MiscUtils";
+import { hasNonZeroValue } from "../utils/MiscUtils";
 
 import type {
   Coord,
@@ -14,7 +14,7 @@ import {
   assertSafeNonNegativeInteger,
   assertGreaterThan,
   assertEquals
-} from "../core/AssertUtils";
+} from "../utils/AssertUtils";
 
 const _neighborOffsetCache = new Map<string, ReadonlyArray<Offset>>();
 
