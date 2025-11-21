@@ -20,12 +20,12 @@ export class Engine<Target, State, A extends Action> {
 export function createActionReducer<S, A extends Action>(
   handlers: ActionHandlers<S, A>
 ): Reducer<S, A> {
-  return function reducer(state: S, action: A): S {
-    // Tell TS that action.type is one of the handler keys
-    const key = action.type as keyof typeof handlers;
-    const handler = handlers[key] as ((state: S, action: A) => S);
+  return (state: S, action: A): S => {
+    const handler = handlers[action.type];
 
-    return handler ? handler(state, action) : state;
+    if (!handler) return state;
+
+    return handler(state, action);
   };
 }
 
