@@ -12,12 +12,18 @@ import { createReducer } from "../../action/ActionMap";
 // Types & constants
 // ---------------------------------------------------------------------------
 
-export const PLAYER_TOKENS = ["🔴", "🟡"] as const;
-export type PlayerToken = (typeof PLAYER_TOKENS)[number];
-export type GameResult = "won" | "draw" | "quit";
-
+const PLAYER_TOKENS = ["🔴", "🟡"] as const;
 const WIN_TOKEN = "🟢" as const;
 const DIRECTIONS: Coord[] = generateQuadrantVectors(2); // right, down, diags...
+
+type PlayerToken = (typeof PLAYER_TOKENS)[number];
+type GameResult = "won" | "draw" | "quit";
+
+export type ConnectFourAction =
+  | Action<"moveLeft">
+  | Action<"moveRight">
+  | Action<"dropPiece">
+  | Action<"quit">;
 
 export interface ConnectFourState {
   readonly board: DenseWorld<string>;
@@ -27,12 +33,6 @@ export interface ConnectFourState {
   result: GameResult | null;
   winnerToken: PlayerToken | null;
 }
-
-export type ConnectFourAction =
-  | Action<"moveLeft">
-  | Action<"moveRight">
-  | Action<"dropPiece">
-  | Action<"quit">;
 
 // ---------------------------------------------------------------------------
 // Core game logic (engine-agnostic)
@@ -156,7 +156,7 @@ export const connectFourReducer = createReducer<ConnectFourGame, ConnectFourActi
 });
 
 // ---------------------------------------------------------------------------
-// Engine wrapper (pure logic + reducer)
+// Engine wrapper (game logic + reducer)
 // ---------------------------------------------------------------------------
 
 export class ConnectFourEngine extends Engine<ConnectFourState, ConnectFourGame, ConnectFourAction> {

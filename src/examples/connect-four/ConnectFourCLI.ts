@@ -1,10 +1,6 @@
 import * as readline from "readline";
 import { createKeyMap } from "../../action/ActionMap";
-import {
-  ConnectFourGame,
-  ConnectFourEngine,
-  ConnectFourAction
-} from "./ConnectFour";
+import { ConnectFourGame, ConnectFourEngine, ConnectFourAction } from "./ConnectFour";
 
 const keyToAction = createKeyMap<ConnectFourAction>({
   a: { type: "moveLeft" },
