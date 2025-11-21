@@ -9,13 +9,13 @@ const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
-class ConnectXConsole<T extends StringRenderable> {
-  private readonly game: ConnectXGame<T>;
+class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private readonly engine: ConnectXEngine<T>;
 
   constructor(settings: ConnectXSettings<T>) {
-    this.game = new ConnectXGame(settings);
-    this.engine = new ConnectXEngine(this.game);
+    super(settings);
+
+    this.engine = new ConnectXEngine(this);
   }
 
   start() {
@@ -33,7 +33,7 @@ class ConnectXConsole<T extends StringRenderable> {
       this.engine.dispatch(action);
       this.render();
 
-      if (this.game.state.outcome) {
+      if (this.state.outcome) {
         this.exit();
       }
     });
@@ -44,10 +44,10 @@ class ConnectXConsole<T extends StringRenderable> {
   render() {
     console.clear();
 
-    const { board, boardCursor } = this.game.state;
+    const { board, boardCursor } = this.state;
     const [width] = board.bounds;
 
-    let output = `${this.game.currentPlayerToken}'s Turn\n\n`;
+    let output = `${this.currentPlayerToken}'s Turn\n\n`;
 
     for (let col = 0; col < width; col++) {
       output += boardCursor.values[0] === col ? " ↓ " : "   ";
@@ -62,7 +62,7 @@ class ConnectXConsole<T extends StringRenderable> {
   private exit() {
     process.stdin.setRawMode(false);
     process.stdin.pause();
-    console.log(`Game over: ${this.game.outcomeMessage}`);
+    console.log(`Game over: ${this.outcomeMessage}`);
     process.exit(0);
   }
 }
