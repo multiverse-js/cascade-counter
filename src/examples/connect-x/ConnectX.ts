@@ -42,6 +42,7 @@ export interface ConnectXSnapshot<T> {
   cells: T[];
   boardCursorIndex: number;
   playerCursorIndex: number;
+  outcome?: ConnectXOutcome;
 }
 
 // Difference between two snapshots
@@ -49,6 +50,7 @@ export interface ConnectXPatch<T> {
   cells: Patch2D<T>[];
   boardCursorIndex?: number;
   playerCursorIndex?: number;
+  outcome?: ConnectXOutcome;
 }
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
@@ -105,12 +107,13 @@ export class ConnectXTimeAdapter<T> {
   }
 
   takeSnapshot(): ConnectXSnapshot<T> {
-    const { board, boardCursor, playerCursor } = this.state;
+    const { board, boardCursor, playerCursor, outcome } = this.state;
 
     return {
       cells: board.toArray(),
       boardCursorIndex: boardCursor.values[0],
-      playerCursorIndex: playerCursor.values[0]
+      playerCursorIndex: playerCursor.values[0],
+      outcome
     };
   }
 
@@ -126,6 +129,9 @@ export class ConnectXTimeAdapter<T> {
     if (prev.playerCursorIndex !== next.playerCursorIndex) {
       patch.playerCursorIndex = next.playerCursorIndex;
     }
+    if (prev.outcome !== next.outcome) {
+      patch.outcome = next.outcome;
+    }
     return patch;
   }
 
@@ -133,7 +139,8 @@ export class ConnectXTimeAdapter<T> {
     const next: ConnectXSnapshot<T> = {
       cells: base.cells.slice(),
       boardCursorIndex: base.boardCursorIndex,
-      playerCursorIndex: base.playerCursorIndex
+      playerCursorIndex: base.playerCursorIndex,
+      outcome: base.outcome
     };
 
     for (const cell of patch.cells) {
@@ -145,6 +152,9 @@ export class ConnectXTimeAdapter<T> {
     }
     if (patch.playerCursorIndex !== undefined) {
       next.playerCursorIndex = patch.playerCursorIndex;
+    }
+    if (patch.outcome !== undefined) {
+      next.outcome = patch.outcome;
     }
     return next;
   }
@@ -236,6 +246,9 @@ export class ConnectXGame<T extends StringRenderable> {
 
   getPlayerToken = (index?: number): T =>
     this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
+
+  isMoveAction = (action: ConnectXAction): boolean =>
+    action.type === "moveLeft" || action.type === "moveRight";
 
   get outcomeMessage(): string {
     switch (this.state.outcome) {

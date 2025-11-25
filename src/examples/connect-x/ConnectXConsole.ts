@@ -19,6 +19,10 @@ const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
+const CTRL_C = "\u0003";
+const LEFT_ARROW = "\u001b[D";
+const RIGHT_ARROW = "\u001b[C";
+
 class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private readonly engine: ConnectXEngine<T>;
   private readonly adapter: ConnectXTimeAdapter<T>;
@@ -40,21 +44,20 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      if (key === "\u0003") { // ctrl+c
-        this.exit();
-      }
-      if (key === "\u001b[D") { // left arrow: previous move
-        if (this.timeline.stepBackward()) this.render();
-        return;
-      }
-      if (key === "\u001b[C") { // right arrow: next move
-        if (this.timeline.stepForward()) this.render();
-        return;
+      switch(key) {
+        case CTRL_C:
+          this.exit();
+        case LEFT_ARROW:
+          if (this.timeline.stepBackward()) this.render();
+          return;
+        case RIGHT_ARROW:
+          if (this.timeline.stepForward()) this.render();
+          return;
       }
       const action = KEY_TO_ACTION.match(key.toLowerCase());
       if (!action) return;
 
-      this.processAction(action); // records quit into timeline
+      this.processAction(action);
       this.render();
 
       if (action.type === "quit") {
@@ -85,12 +88,11 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     const snapshot = this.adapter.nextSnapshot(this.timeline);
     if (!snapshot) return;
 
-    const { boardCursorIndex, playerCursorIndex, cells } = snapshot;
+    const { boardCursorIndex, playerCursorIndex, cells, outcome } = snapshot;
     const [width, height] = this.state.board.bounds;
-    const outcome = this.state.outcome;
+    const token = this.getPlayerToken(playerCursorIndex);
 
-    let output = `${this.getPlayerToken(playerCursorIndex)}'s Turn\n\n`;
-
+    let output = `${token}'s Turn\n\n`;
     for (let col = 0; col < width; col++) {
       output += boardCursorIndex === col ? " ↓ " : "   ";
     }
@@ -102,10 +104,10 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
         cellPadding: " "
       }
     ) + "\n";
+    output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
     output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
-    if (outcome) output += `Outcome: ${outcome}\n`;
-    output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
+    if (outcome) output += `Outcome: ${token} ${outcome}\n`;
 
     console.log(output);
   }
