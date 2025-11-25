@@ -1,10 +1,10 @@
-export interface CellPatch2D<T> {
+export interface Patch2D<T> {
   x: number;
   y: number;
   value: T;
 }
 
-export interface CellPatch3D<T> {
+export interface Patch3D<T> {
   x: number;
   y: number;
   z: number;

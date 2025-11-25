@@ -1,13 +1,17 @@
-import { StringRenderable } from "../../soul/types";
-import { createKeyMap } from "../../mind/Engine";
-import { DenseWorld } from "../../reality/DenseWorld";
 import {
   ConnectXGame,
   ConnectXSettings,
-  ConnectXEngine,
   ConnectXAction,
+  ConnectXEngine,
+  ConnectXTimeAdapter,
+  ConnectXTimeline,
+  ConnectXStateRecorder,
   ConnectXSnapshot
 } from "./ConnectX";
+
+import { StringRenderable } from "../../soul/types";
+import { createKeyMap } from "../../mind/Engine";
+import { DenseWorld } from "../../reality/DenseWorld";
 
 const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
   a: { type: "moveLeft" },
@@ -18,11 +22,17 @@ const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
 
 class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private readonly engine: ConnectXEngine<T>;
+  private readonly adapter: ConnectXTimeAdapter<T>;
+  private readonly timeline: ConnectXTimeline<T>;
+  private readonly recorder: ConnectXStateRecorder<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     super(settings);
 
     this.engine = new ConnectXEngine(this);
+    this.adapter = new ConnectXTimeAdapter(this.state);
+    this.timeline = this.adapter.createTimeline();
+    this.recorder = this.adapter.createStateRecorder(this.timeline);
   }
 
   start() {
@@ -31,37 +41,20 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      if (key === "\u0003") { // Ctrl+C
+      if (key === "\u0003") { // ctrl+c
         this.exit();
       }
       if (key === "\u001b[D") { // left arrow: previous move
-        if (this.timeline.stepBackward()) {
-          this.render();
-        }
+        if (this.timeline.stepBackward()) this.render();
         return;
       }
       if (key === "\u001b[C") { // right arrow: next move
-        if (this.timeline.stepForward()) {
-          this.render();
-        }
+        if (this.timeline.stepForward()) this.render();
         return;
       }
-
       const action = KEY_TO_ACTION.match(key.toLowerCase());
       if (!action) return;
-
-      if (!this.timeline.isAtLatest()) this.timeline.moveToLast();
-
-      let prev: ConnectXSnapshot<T> | undefined;
-      const isCursorMove = this.isCursorAction(action);
-      if (!isCursorMove) prev = this.takeSnapshot();
-
-      this.engine.dispatch(action);
-
-      if (prev) {
-        const patch = this.createPatch(prev, this.takeSnapshot());
-        this.timeline.pushPatch(patch);
-      }
+      this.processAction(action);
       this.render();
 
       if (this.state.outcome) {
@@ -72,10 +65,24 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     this.render();
   }
 
-  render() {
+  private processAction(action: ConnectXAction) {
+    if (!this.timeline.isAtLatest()) {
+      this.timeline.moveToLast();
+    }
+    const isCursorMove = this.isMoveAction(action);
+    if (!isCursorMove) {
+      this.recorder.commit(this.state); // baseline snapshot
+    }
+    this.engine.dispatch(action);
+    if (!isCursorMove) {
+      this.recorder.push(this.state); // compute patch vs baseline + push
+    }
+  }
+
+  private render() {
     console.clear();
 
-    const snapshot = this.nextSnapshot;
+    const snapshot = this.snapshot;
     if (!snapshot) return;
 
     const { cursorX, currentPlayerIndex, outcome, cells } = snapshot;
@@ -93,12 +100,16 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
         cellPadding: " "
       }
     );
-    output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
-    output += `\nCursor Position: Column ${cursorX + 1}\n`;
+    output += `\nMove: ${this.timeline.index + 1}/${this.timeline.length}\n`;
+    output += `Cursor Position: Column ${cursorX + 1}\n`;
     if (outcome) output += `Outcome: ${outcome}\n`;
-    output += "Controls: A = left, D = right, W = drop, Q = quit, ←/→ = time travel\n";
+    output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
 
     console.log(output);
+  }
+
+  private get snapshot(): ConnectXSnapshot<T> | undefined {
+    return this.adapter.nextSnapshot(this.timeline);
   }
 
   private exit() {
@@ -110,8 +121,8 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 7,
-  boardHeight: 6,
+  boardWidth: 21,
+  boardHeight: 18,
   playerTokens: ["🔴", "🟡", "🟣"],
   emptyToken: ".",
   winToken: "🟢",

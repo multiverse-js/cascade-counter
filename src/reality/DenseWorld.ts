@@ -67,7 +67,7 @@ export class DenseWorld<T> extends BaseWorld<T> {
     return this.get(coord) === this.defaultValue;
   }
 
-  get cells(): T[] {
+  toArray(): T[] {
     return this.data.slice();
   }
 

@@ -11,9 +11,10 @@ import { DenseWorld } from "../../reality/DenseWorld";
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
 
-import { CellPatch2D } from "../../time/types";
+import { Patch2D } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
-import { patch2DArray } from "../../time/StateRecorder";
+import { StateRecorder } from "../../time/StateRecorder";
+import { patch2D } from "../../time/Patch";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -33,7 +34,7 @@ export interface ConnectXState<T> {
   readonly boardCursor: CascadeCounter;
   readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
-  outcome?: ConnextXOutcome;
+  outcome?: ConnectXOutcome;
 }
 
 // Fully reconstructable state at a point in time (assuming constant board bounds)
@@ -41,18 +42,18 @@ export interface ConnectXSnapshot<T> {
   cells: T[];
   cursorX: number;
   currentPlayerIndex: number;
-  outcome?: ConnextXOutcome;
+  outcome?: ConnectXOutcome;
 }
 
 // Difference between two snapshots
 export interface ConnectXPatch<T> {
-  cells: CellPatch2D<T>[];
-  cursorX: number;
+  cells: Patch2D<T>[];
+  cursorX?: number;
   currentPlayerIndex?: number;
-  outcome?: ConnextXOutcome;
+  outcome?: ConnectXOutcome;
 }
 
-export type ConnextXOutcome = "win" | "draw" | "quit";
+export type ConnectXOutcome = "win" | "draw" | "quit";
 
 export type ConnectXAction =
   | Action<"moveLeft">
@@ -60,39 +61,103 @@ export type ConnectXAction =
   | Action<"dropPiece">
   | Action<"quit">;
 
+export type ConnectXTimeline<T> = Timeline<
+  ConnectXSnapshot<T>,
+  ConnectXPatch<T>
+>;
+
+export type ConnectXStateRecorder<T> = StateRecorder<
+  ConnectXState<T>,
+  ConnectXSnapshot<T>,
+  ConnectXPatch<T>
+>;
+
 // ---------------------------------------------------------------------------
-// Constants
+// Time Adapter
 // ---------------------------------------------------------------------------
 
-const QUADRANTS = Vector2.toArrays(Vector2.quadrants);
+export class ConnectXTimeAdapter<T> {
+  private readonly state: ConnectXState<T>;
+  private readonly width: number;
+  private readonly height: number;
 
-const applyConnectXPatch = <T>(
-  base: ConnectXSnapshot<T>,
-  patch: ConnectXPatch<T>,
-  width: number
-): ConnectXSnapshot<T> => {
-  const next: ConnectXSnapshot<T> = {
-    cells: base.cells.slice(),
-    cursorX: base.cursorX,
-    currentPlayerIndex: base.currentPlayerIndex,
-    outcome: base.outcome
-  };
-
-  for (const cell of patch.cells) {
-    const index = cell.y * width + cell.x;
-    next.cells[index] = cell.value;
+  constructor(state: ConnectXState<T>) {
+    this.state = state;
+    const [width, height] = this.state.board.bounds;
+    this.width = width;
+    this.height = height;
   }
 
-  if (patch.cursorX !== undefined) {
-    next.cursorX = patch.cursorX;
+  createTimeline(): ConnectXTimeline<T> {
+    return new Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>({
+      mode: "patch",
+      applyPatch: (base, patch) => this.applyPatch(base, patch)
+    });
   }
-  if (patch.currentPlayerIndex !== undefined) {
-    next.currentPlayerIndex = patch.currentPlayerIndex;
+
+  createStateRecorder(timeline: ConnectXTimeline<T>): ConnectXStateRecorder<T> {
+    const recorder = new StateRecorder({
+      timeline: timeline,
+      snapshot: () => this.takeSnapshot(),
+      patch: (from, to) => this.createPatch(from, to)
+    });
+
+    recorder.pushInitial(this.state);
+    return recorder;
   }
-  if (patch.outcome !== undefined) {
-    next.outcome = patch.outcome;
+
+  takeSnapshot(): ConnectXSnapshot<T> {
+    const { board, boardCursor, playerCursor, outcome } = this.state;
+
+    return {
+      cells: board.toArray(),
+      cursorX: boardCursor.values[0],
+      currentPlayerIndex: playerCursor.values[0],
+      outcome
+    };
   }
-  return next;
+
+  nextSnapshot = (timeline: ConnectXTimeline<T>): ConnectXSnapshot<T> | undefined =>
+    timeline.getNextSnapshot(() => this.takeSnapshot());
+
+  createPatch(prev: ConnectXSnapshot<T>, next: ConnectXSnapshot<T>): ConnectXPatch<T> {
+    const patch: ConnectXPatch<T> = {
+      cells: patch2D(prev.cells, next.cells, this.width, this.height),
+      cursorX: next.cursorX
+    };
+
+    if (prev.currentPlayerIndex !== next.currentPlayerIndex) {
+      patch.currentPlayerIndex = next.currentPlayerIndex;
+    }
+    if (prev.outcome !== next.outcome) {
+      patch.outcome = next.outcome;
+    }
+    return patch;
+  }
+
+  applyPatch(base: ConnectXSnapshot<T>, patch: ConnectXPatch<T>): ConnectXSnapshot<T> {
+    const next: ConnectXSnapshot<T> = {
+      cells: base.cells.slice(),
+      cursorX: base.cursorX,
+      currentPlayerIndex: base.currentPlayerIndex,
+      outcome: base.outcome
+    };
+
+    for (const cell of patch.cells) {
+      const index = cell.y * this.width + cell.x;
+      next.cells[index] = cell.value;
+    }
+    if (patch.cursorX !== undefined) {
+      next.cursorX = patch.cursorX;
+    }
+    if (patch.currentPlayerIndex !== undefined) {
+      next.currentPlayerIndex = patch.currentPlayerIndex;
+    }
+    if (patch.outcome !== undefined) {
+      next.outcome = patch.outcome;
+    }
+    return next;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -100,9 +165,10 @@ const applyConnectXPatch = <T>(
 // ---------------------------------------------------------------------------
 
 export class ConnectXGame<T extends StringRenderable> {
+  static readonly QUADRANTS = Vector2.toArrays(Vector2.quadrants);
+
   readonly settings: ConnectXSettings<T>;
   readonly state: ConnectXState<T>;
-  readonly timeline: Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.settings = settings;
@@ -119,11 +185,6 @@ export class ConnectXGame<T extends StringRenderable> {
         [settings.playerTokens.length]
       )
     };
-    this.timeline = new Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>({
-      mode: "patch",
-      applyPatch: (base, patch) => applyConnectXPatch(base, patch, settings.boardWidth)
-    });
-    this.timeline.pushFull(this.takeSnapshot());
   }
 
   moveCursor(direction: 1 | -1): void {
@@ -162,7 +223,7 @@ export class ConnectXGame<T extends StringRenderable> {
     const { winToken, winLength } = this.settings;
     const isToken = this.isToken;
 
-    for (const direction of QUADRANTS) {
+    for (const direction of ConnectXGame.QUADRANTS) {
       const line = findLine(lastMove, direction, winLength, board.bounds, isToken);
 
       if (line) {
@@ -183,48 +244,11 @@ export class ConnectXGame<T extends StringRenderable> {
     return true;
   }
 
-  isCursorAction(action: ConnectXAction): boolean {
-    return action.type === "moveLeft" || action.type === "moveRight";
-  }
+  getPlayerToken = (index?: number): T =>
+    this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
 
-  getPlayerToken(index?: number): T {
-    return this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
-  }
-
-  createPatch<T>(
-    prev: ConnectXSnapshot<T>,
-    next: ConnectXSnapshot<T>
-  ): ConnectXPatch<T> {
-    const [width, height] = this.state.board.bounds;
-    const cells: CellPatch2D<T>[] = patch2DArray(prev.cells, next.cells, width, height);
-    const patch: ConnectXPatch<T> = {
-      cells: cells,
-      cursorX: next.cursorX
-    };
-
-    if (prev.currentPlayerIndex !== next.currentPlayerIndex) {
-      patch.currentPlayerIndex = next.currentPlayerIndex;
-    }
-    if (prev.outcome !== next.outcome) {
-      patch.outcome = next.outcome;
-    }
-    return patch;
-  }
-
-  takeSnapshot(): ConnectXSnapshot<T> {
-    const { board, boardCursor, playerCursor, outcome } = this.state;
-
-    return {
-      cells: board.cells,
-      cursorX: boardCursor.values[0],
-      currentPlayerIndex: playerCursor.values[0],
-      outcome
-    };
-  }
-
-  get nextSnapshot(): ConnectXSnapshot<T> | undefined {
-    return this.timeline.getNextSnapshot(() => this.takeSnapshot());
-  }
+  isMoveAction = (action: ConnectXAction): boolean =>
+    action.type === "moveLeft" || action.type === "moveRight";
 
   get outcomeMessage(): string {
     switch (this.state.outcome) {
@@ -241,7 +265,7 @@ export class ConnectXGame<T extends StringRenderable> {
 }
 
 // ---------------------------------------------------------------------------
-// Reducer: Actions → state transitions
+// Engine wrapper (game logic + action-to-state-transiton reducer)
 // ---------------------------------------------------------------------------
 
 function connectXActionReducer<T extends StringRenderable>() {
@@ -280,10 +304,6 @@ function connectXActionReducer<T extends StringRenderable>() {
     }
   });
 }
-
-// ---------------------------------------------------------------------------
-// Engine wrapper (game logic + reducer)
-// ---------------------------------------------------------------------------
 
 export class ConnectXEngine<T extends StringRenderable> extends Engine<
   ConnectXGame<T>,
