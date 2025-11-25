@@ -1,5 +1,6 @@
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
+import { DenseWorld } from "../../reality/DenseWorld";
 import {
   ConnectXGame,
   ConnectXSettings,
@@ -53,15 +54,13 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
 
       let prev: ConnectXSnapshot<T> | undefined;
       const isCursorMove = this.isCursorAction(action);
-
-      if (!isCursorMove) prev = this.liveSnapshot;
+      if (!isCursorMove) prev = this.takeSnapshot();
 
       this.engine.dispatch(action);
 
-      if (!isCursorMove && prev) {
-        const next = this.liveSnapshot;
-        const diff = this.diffSnapshots(prev, next);
-        this.timeline.pushDiff(diff);
+      if (prev) {
+        const patch = this.createPatch(prev, this.takeSnapshot());
+        this.timeline.pushPatch(patch);
       }
       this.render();
 
@@ -76,47 +75,30 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   render() {
     console.clear();
 
-    const { cursorX, currentPlayerIndex, outcome, cells } = this.currentSnapshot;
-    const [width] = this.state.board.bounds;
-    const currentPlayerToken = this.settings.playerTokens[currentPlayerIndex];
-    const boardString = this.getBoardString(cells);
+    const snapshot = this.nextSnapshot;
+    if (!snapshot) return;
 
-    let output = `${currentPlayerToken}'s Turn\n\n`;
+    const { cursorX, currentPlayerIndex, outcome, cells } = snapshot;
+    const [width, height] = this.state.board.bounds;
+
+    let output = `${this.getPlayerToken(currentPlayerIndex)}'s Turn\n\n`;
 
     for (let col = 0; col < width; col++) {
       output += cursorX === col ? " ↓ " : "   ";
     }
-
-    output += "\n" + boardString + "\n";
-    output += `Cursor Position: Column ${cursorX + 1}\n`;
+    output += "\n" + DenseWorld.toStringFromData2D(
+      cells, width, height,
+      {
+        defaultValue: this.state.board.defaultValue,
+        cellPadding: " "
+      }
+    );
     output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
-
-    if (outcome) {
-      output += `Outcome: ${outcome}\n`;
-    }
+    output += `\nCursor Position: Column ${cursorX + 1}\n`;
+    if (outcome) output += `Outcome: ${outcome}\n`;
     output += "Controls: A = left, D = right, W = drop, Q = quit, ←/→ = time travel\n";
 
     console.log(output);
-  }
-
-  private getBoardString<T>(
-    cells: T[]
-  ): string {
-    const [width, height] = this.state.board.bounds;
-    let out = "";
-
-    for (let y = 0; y < height; y++) {
-      const row: string[] = [];
-      for (let x = 0; x < width; x++) {
-        const cell = String(cells[y * width + x]);
-        if (cell === ".")
-          row.push(" " + cell);
-        else row.push(cell);
-      }
-      out += row.join(" ");
-      if (y < height - 1) out += "\n";
-    }
-    return out;
   }
 
   private exit() {
@@ -128,9 +110,9 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 21,
-  boardHeight: 18,
-  playerTokens: ["🔴", "🟡"],
+  boardWidth: 7,
+  boardHeight: 6,
+  playerTokens: ["🔴", "🟡", "🟣"],
   emptyToken: ".",
   winToken: "🟢",
   winLength: 4

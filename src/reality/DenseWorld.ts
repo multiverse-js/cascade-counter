@@ -1,9 +1,10 @@
+import { StringRenderable } from "../soul/types";
 import type { Coord, WorldOptions } from "./types";
 import { BaseWorld } from "./World";
 
 export class DenseWorld<T> extends BaseWorld<T> {
   private data: T[];
-  private readonly defaultValue: T;
+  readonly defaultValue: T;
 
   constructor(options: WorldOptions<T>) {
     super({ ...options, backend: "dense" });
@@ -66,39 +67,48 @@ export class DenseWorld<T> extends BaseWorld<T> {
     return this.get(coord) === this.defaultValue;
   }
 
-  toString2D(cellPadding = "", rowSeparator = "\n") {
-    let out = "";
-
-    if (this.bounds.length === 1) {
-      const width = this.bounds[0];
-
-      for (let x = 0; x < width; x++) {
-        const cell = this.get([x]);
-        out += (cell === this.defaultValue
-          ? ` ${this.defaultValue} `
-          : ` ${cell}${cellPadding}`
-        );
-      }
-    } else if (this.bounds.length === 2) {
-      const [width, height] = this.bounds;
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const cell = this.get([x, y]);
-          out += (cell === this.defaultValue
-            ? ` ${this.defaultValue} `
-            : `${cell}${cellPadding}`
-          );
-        }
-        out += rowSeparator;
-      }
-    } else {
-      throw new Error("DenseWorld.print(): Cannot print world greater than 2 dimensions");
-    }
-    return out;
-  }
-
   get cells(): T[] {
     return this.data.slice();
+  }
+
+  static toStringFromData2D<T extends StringRenderable>(
+    cells: ReadonlyArray<T>,
+    width: number,
+    height: number,
+    options: {
+      defaultValue?: T;
+      cellPadding?: string;
+      rowSeparator?: string;
+    } = {}
+  ): string {
+    const {
+      defaultValue,
+      cellPadding = "",
+      rowSeparator = "\n",
+    } = options;
+
+    const expected = width * height;
+
+    if (cells.length !== expected) {
+      throw new Error(
+        `DenseWorld.toStringFromData: expected ${expected} cells for 2D world, got ${cells.length}`
+      );
+    }
+
+    let out = "";
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const raw = cells[y * width + x];
+
+        if (defaultValue !== undefined && raw === defaultValue) {
+          out += ` ${String(defaultValue)} `;
+        } else {
+          out += `${String(raw)}${cellPadding}`;
+        }
+      }
+      out += rowSeparator;
+    }
+
+    return out;
   }
 }

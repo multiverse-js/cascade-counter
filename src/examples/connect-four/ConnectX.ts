@@ -13,7 +13,7 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 
 import { CellPatch2D } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
-import { diff2DArray } from "../../time/StateRecorder";
+import { patch2DArray } from "../../time/StateRecorder";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -120,10 +120,10 @@ export class ConnectXGame<T extends StringRenderable> {
       )
     };
     this.timeline = new Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>({
-      mode: "diff",
-      applyDiff: (base, patch) => applyConnectXPatch(base, patch, settings.boardWidth)
+      mode: "patch",
+      applyPatch: (base, patch) => applyConnectXPatch(base, patch, settings.boardWidth)
     });
-    this.timeline.pushFull(this.liveSnapshot);
+    this.timeline.pushFull(this.takeSnapshot());
   }
 
   moveCursor(direction: 1 | -1): void {
@@ -146,14 +146,14 @@ export class ConnectXGame<T extends StringRenderable> {
     );
     if (!droppedCoord) return false;
 
-    board.set(droppedCoord, this.currentPlayerToken);
+    board.set(droppedCoord, this.getPlayerToken());
     this.state.lastMove = droppedCoord;
 
     return true;
   }
 
   isToken = (coord: Coord): boolean =>
-    this.state.board.get(coord) === this.currentPlayerToken;
+    this.state.board.get(coord) === this.getPlayerToken();
 
   isWin(): boolean {
     const { lastMove, board } = this.state;
@@ -187,12 +187,16 @@ export class ConnectXGame<T extends StringRenderable> {
     return action.type === "moveLeft" || action.type === "moveRight";
   }
 
-  diffSnapshots<T>(
+  getPlayerToken(index?: number): T {
+    return this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
+  }
+
+  createPatch<T>(
     prev: ConnectXSnapshot<T>,
     next: ConnectXSnapshot<T>
   ): ConnectXPatch<T> {
     const [width, height] = this.state.board.bounds;
-    const cells: CellPatch2D<T>[] = diff2DArray(prev.cells, next.cells, width, height);
+    const cells: CellPatch2D<T>[] = patch2DArray(prev.cells, next.cells, width, height);
     const patch: ConnectXPatch<T> = {
       cells: cells,
       cursorX: next.cursorX
@@ -207,7 +211,7 @@ export class ConnectXGame<T extends StringRenderable> {
     return patch;
   }
 
-  get liveSnapshot(): ConnectXSnapshot<T> {
+  takeSnapshot(): ConnectXSnapshot<T> {
     const { board, boardCursor, playerCursor, outcome } = this.state;
 
     return {
@@ -218,25 +222,14 @@ export class ConnectXGame<T extends StringRenderable> {
     };
   }
 
-  get currentSnapshot(): ConnectXSnapshot<T> {
-    if (this.timeline.isAtLatest()) {
-      return this.liveSnapshot;
-    }
-    const snapshot = this.timeline.getCurrentSnapshot();
-    if (!snapshot) {
-      return this.liveSnapshot;
-    }
-    return snapshot;
-  }
-
-  get currentPlayerToken(): T {
-    return this.settings.playerTokens[this.state.playerCursor.values[0]];
+  get nextSnapshot(): ConnectXSnapshot<T> | undefined {
+    return this.timeline.getNextSnapshot(() => this.takeSnapshot());
   }
 
   get outcomeMessage(): string {
     switch (this.state.outcome) {
       case "win":
-        return `${this.currentPlayerToken} wins!`;
+        return `${this.getPlayerToken()} wins!`;
       case "draw":
         return "It's a draw!";
       case "quit":

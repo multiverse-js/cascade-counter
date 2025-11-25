@@ -1,27 +1,27 @@
 import { Timeline } from "./Timeline";
 import { CellPatch2D, CellPatch3D } from "./types";
 
-export interface StateRecorderOptions<State, Snapshot, Diff> {
-  timeline: Timeline<Snapshot, Diff>;
+export interface StateRecorderOptions<State, Snapshot, Patch> {
+  timeline: Timeline<Snapshot, Patch>;
   snapshot: (state: State) => Snapshot;
-  diff: (from: Snapshot, to: Snapshot) => Diff;
+  patch: (from: Snapshot, to: Snapshot) => Patch;
 }
 
 /**
  * StateRecorder: ergonomic layer on top of Timeline
  * - commit(state): capture baseline snapshot before a batch of changes
- * - push(state): compute diff vs committed snapshot and push into Timeline
+ * - push(state): compute patch vs committed snapshot and push into Timeline
  */
-export class StateRecorder<State, Snapshot, Diff> {
-  private timeline: Timeline<Snapshot, Diff>;
+export class StateRecorder<State, Snapshot, Patch> {
+  private timeline: Timeline<Snapshot, Patch>;
   private snapshotFn: (state: State) => Snapshot;
-  private diffFn: (from: Snapshot, to: Snapshot) => Diff;
+  private patchFn: (from: Snapshot, to: Snapshot) => Patch;
   private committedSnapshot?: Snapshot;
 
-  constructor(opts: StateRecorderOptions<State, Snapshot, Diff>) {
+  constructor(opts: StateRecorderOptions<State, Snapshot, Patch>) {
     this.timeline = opts.timeline;
     this.snapshotFn = opts.snapshot;
-    this.diffFn = opts.diff;
+    this.patchFn = opts.patch;
   }
 
   commit(state: State): void {
@@ -34,8 +34,8 @@ export class StateRecorder<State, Snapshot, Diff> {
     let index;
 
     if (this.committedSnapshot) {
-      const diff = this.diffFn(this.committedSnapshot, snap);
-      index = this.timeline.pushDiff(diff, label);
+      const patch = this.patchFn(this.committedSnapshot, snap);
+      index = this.timeline.pushPatch(patch, label);
     } else {
       index = this.timeline.pushFull(snap, label);
     }
@@ -45,7 +45,7 @@ export class StateRecorder<State, Snapshot, Diff> {
   }
 }
 
-export function diff2DArray<T>(
+export function patch2DArray<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,
@@ -53,13 +53,13 @@ export function diff2DArray<T>(
 ): CellPatch2D<T>[] {
   if (prev.length !== next.length) {
     throw new Error(
-      `diff2DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
+      `patch2DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
     );
   }
 
   if (prev.length !== width * height) {
     throw new Error(
-      `diff2DArray: width*height = ${width * height} does not match array length = ${prev.length}`
+      `patch2DArray: width*height = ${width * height} does not match array length = ${prev.length}`
     );
   }
 
@@ -81,7 +81,7 @@ export function diff2DArray<T>(
   return patches;
 }
 
-export function diff3DArray<T>(
+export function patch3DArray<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,
@@ -90,14 +90,14 @@ export function diff3DArray<T>(
 ): CellPatch3D<T>[] {
   if (prev.length !== next.length) {
     throw new Error(
-      `diff3DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
+      `patch3DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
     );
   }
 
   const expectedSize = width * height * depth;
   if (prev.length !== expectedSize) {
     throw new Error(
-      `diff3DArray: width*height*depth = ${expectedSize} does not match array length = ${prev.length}`
+      `patch3DArray: width*height*depth = ${expectedSize} does not match array length = ${prev.length}`
     );
   }
 
