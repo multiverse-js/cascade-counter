@@ -12,16 +12,16 @@ import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
 import { DenseWorld } from "../../reality/DenseWorld";
 
-const KEY_TO_ACTION = createKeyMap<ConnectXAction>({
+const CTRL_C = "\u0003";
+const LEFT_ARROW = "\u001b[D";
+const RIGHT_ARROW = "\u001b[C";
+
+const KEY_MAP = createKeyMap<ConnectXAction>({
   a: { type: "moveLeft" },
   d: { type: "moveRight" },
   w: { type: "dropPiece" },
   q: { type: "quit" }
 });
-
-const CTRL_C = "\u0003";
-const LEFT_ARROW = "\u001b[D";
-const RIGHT_ARROW = "\u001b[C";
 
 class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private readonly engine: ConnectXEngine<T>;
@@ -44,7 +44,7 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      switch(key) {
+      switch (key) {
         case CTRL_C:
           this.exit();
         case LEFT_ARROW:
@@ -54,31 +54,31 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
           if (this.timeline.stepForward()) this.render();
           return;
       }
-      const action = KEY_TO_ACTION.match(key.toLowerCase());
+      const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
+      if (!this.timeline.isAtLatest()) this.timeline.moveToLast();
 
-      this.processAction(action);
+      const quit = this.processAction(action);
       this.render();
-
-      if (action.type === "quit") {
-        this.exit();
-      }
+      if (quit) this.exit();
     });
 
-    this.render();
+    this.render(); // render initial state
   }
 
-  private processAction(action: ConnectXAction) {
-    if (!this.timeline.isAtLatest()) {
-      this.timeline.moveToLast();
-    }
-    const isPieceDrop = action.type === "dropPiece";
-    if (isPieceDrop) {
-      this.recorder.commit(this.state); // baseline snapshot
-    }
-    this.engine.dispatch(action);
-    if (isPieceDrop) {
-      this.recorder.push(this.state); // compute patch vs baseline + push
+  private processAction(action: ConnectXAction): boolean {
+    switch (action.type) {
+      case "quit":
+        this.engine.dispatch(action);
+        return true;
+      case "dropPiece":
+        this.recorder.commit(this.state);
+        this.engine.dispatch(action);
+        this.recorder.push(this.state);
+        return false;
+      default:
+        this.engine.dispatch(action);
+        return false;
     }
   }
 
