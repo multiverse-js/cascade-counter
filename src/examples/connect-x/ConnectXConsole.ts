@@ -69,12 +69,12 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     if (!this.timeline.isAtLatest()) {
       this.timeline.moveToLast();
     }
-    const isCursorMove = this.isMoveAction(action);
-    if (!isCursorMove) {
+    const isPieceDrop = action.type === "dropPiece";
+    if (isPieceDrop) {
       this.recorder.commit(this.state); // baseline snapshot
     }
     this.engine.dispatch(action);
-    if (!isCursorMove) {
+    if (isPieceDrop) {
       this.recorder.push(this.state); // compute patch vs baseline + push
     }
   }

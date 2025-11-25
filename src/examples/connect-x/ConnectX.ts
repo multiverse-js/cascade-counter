@@ -237,9 +237,6 @@ export class ConnectXGame<T extends StringRenderable> {
   getPlayerToken = (index?: number): T =>
     this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
 
-  isMoveAction = (action: ConnectXAction): boolean =>
-    action.type === "moveLeft" || action.type === "moveRight";
-
   get outcomeMessage(): string {
     switch (this.state.outcome) {
       case "win":
