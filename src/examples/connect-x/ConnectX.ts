@@ -96,7 +96,7 @@ export class ConnectXTimeAdapter<T> {
   }
 
   createStateRecorder(timeline: ConnectXTimeline<T>): ConnectXStateRecorder<T> {
-    const recorder = new StateRecorder({
+    const recorder = new StateRecorder<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>({
       timeline: timeline,
       snapshot: () => this.takeSnapshot(),
       patch: (from, to) => this.createPatch(from, to)
