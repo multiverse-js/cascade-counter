@@ -73,7 +73,7 @@ export type ConnectXStateRecorder<T> = StateRecorder<
 >;
 
 // ---------------------------------------------------------------------------
-// Time Adapter
+// Timeline & state recorder adapter (engine-agnostic)
 // ---------------------------------------------------------------------------
 
 export class ConnectXTimeAdapter<T> {
@@ -213,7 +213,7 @@ export class ConnectXGame<T extends StringRenderable> {
     return true;
   }
 
-  isToken = (coord: Coord): boolean =>
+  hasToken = (coord: Coord): boolean =>
     this.state.board.get(coord) === this.getPlayerToken();
 
   isWin(): boolean {
@@ -221,10 +221,10 @@ export class ConnectXGame<T extends StringRenderable> {
     if (!lastMove) return false;
 
     const { winToken, winLength } = this.settings;
-    const isToken = this.isToken;
+    const hasToken = this.hasToken;
 
     for (const direction of ConnectXGame.DIRECTION_COORDS) {
-      const line = findLine(lastMove, direction, winLength, board.bounds, isToken);
+      const line = findLine(lastMove, direction, winLength, board.bounds, hasToken);
 
       if (line) {
         board.drawLine(line, winToken);
@@ -247,19 +247,12 @@ export class ConnectXGame<T extends StringRenderable> {
   getPlayerToken = (index?: number): T =>
     this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
 
-  isMoveAction = (action: ConnectXAction): boolean =>
-    action.type === "moveLeft" || action.type === "moveRight";
-
   get outcomeMessage(): string {
     switch (this.state.outcome) {
-      case "win":
-        return `${this.getPlayerToken()} wins!`;
-      case "draw":
-        return "It's a draw!";
-      case "quit":
-        return "Quit";
-      default:
-        return "Interrupted";
+      case "win": return `${this.getPlayerToken()} wins!`;
+      case "draw": return "It's a draw!";
+      case "quit": return "Quit";
+      default: return "Interrupted";
     }
   }
 }
@@ -271,13 +264,8 @@ export class ConnectXGame<T extends StringRenderable> {
 function connectXActionReducer<T extends StringRenderable>() {
   return createActionReducer<ConnectXGame<T>, ConnectXAction>(
     {
-      moveLeft(game) {
-        game.moveCursor(-1);
-      },
-
-      moveRight(game) {
-        game.moveCursor(1);
-      },
+      moveLeft: (game) => game.moveCursor(-1),
+      moveRight: (game) => game.moveCursor(1),
 
       dropPiece(game) {
         if (!game.dropPiece()) return;
