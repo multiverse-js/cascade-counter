@@ -1,2 +1,2 @@
 # cascade-counter
-A general-purpose discrete state simulation engine with first-class support for reversible time, spatial worlds, and reducer-driven state transitions.
+A general-purpose engine for discrete simulations with reversible time, N-dimensional worlds, and reducer-driven state transitions.
