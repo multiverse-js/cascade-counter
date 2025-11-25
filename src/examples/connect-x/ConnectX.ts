@@ -269,40 +269,36 @@ export class ConnectXGame<T extends StringRenderable> {
 // ---------------------------------------------------------------------------
 
 function connectXActionReducer<T extends StringRenderable>() {
-  return createActionReducer<ConnectXGame<T>, ConnectXAction>({
-    moveLeft(game) {
-      if (game.state.outcome) return game;
+  return createActionReducer<ConnectXGame<T>, ConnectXAction>(
+    {
+      moveLeft(game) {
+        game.moveCursor(-1);
+      },
 
-      game.moveCursor(-1);
-      return game;
-    },
+      moveRight(game) {
+        game.moveCursor(1);
+      },
 
-    moveRight(game) {
-      if (game.state.outcome) return game;
+      dropPiece(game) {
+        if (!game.dropPiece()) return;
 
-      game.moveCursor(1);
-      return game;
-    },
+        if (game.isWin()) {
+          game.state.outcome = "win";
+        } else if (game.isDraw()) {
+          game.state.outcome = "draw";
+        } else {
+          game.switchPlayer();
+        }
+      },
 
-    dropPiece(game) {
-      if (game.state.outcome) return game;
-      if (!game.dropPiece()) return game;
-
-      if (game.isWin()) {
-        game.state.outcome = "win";
-      } else if (game.isDraw()) {
-        game.state.outcome = "draw";
-      } else {
-        game.switchPlayer();
+      quit(game) {
+        game.state.outcome = "quit";
       }
-      return game;
     },
-
-    quit(game) {
-      game.state.outcome = "quit";
-      return game;
+    {
+      guard: (game) => !game.state.outcome
     }
-  });
+  );
 }
 
 export class ConnectXEngine<T extends StringRenderable> extends Engine<

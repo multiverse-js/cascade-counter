@@ -1,4 +1,10 @@
-import type { Action, Reducer, ActionHandlers, ActionMap } from "./types";
+import type {
+  Action,
+  Reducer,
+  ActionHandlers,
+  ActionMap,
+  ActionReducerOptions
+} from "./types";
 
 export class Engine<Target, State, A extends Action> {
   protected target: Target;
@@ -18,12 +24,21 @@ export class Engine<Target, State, A extends Action> {
 }
 
 export function createActionReducer<S, A extends Action>(
-  handlers: ActionHandlers<S, A>
+  handlers: ActionHandlers<S, A>,
+  options?: ActionReducerOptions<S, A>
 ): Reducer<S, A> {
   return (state: S, action: A): S => {
     const handler = handlers[action.type];
+    if (!handler) return state;
 
-    return handler ? handler(state, action) : state;
+    // Optional pre-guard: bail out before doing anything
+    if (options?.guard && !options.guard(state, action)) {
+      return state;
+    }
+
+    const result = handler(state, action);
+    // If handler returns undefined, assume it mutated state in-place.
+    return result === undefined ? state : result;
   };
 }
 

@@ -10,7 +10,10 @@ export type Reducer<S, A extends Action = Action> = (
   action: A
 ) => S;
 
-export type Handler<S, A extends Action> = (state: S, action: A) => S;
+export type Handler<S, A extends Action> = (
+  state: S,
+  action: A
+) => S | void;
 
 export type ActionHandlers<S, A extends Action> = {
   [T in A["type"]]?: Handler<S, Extract<A, { type: T }>>;
@@ -20,5 +23,9 @@ export type ActionHandlers<S, A extends Action> = {
 };
 
 export type ActionMap<E, A extends Action> = {
-  match: (event: E) => A | null; 
+  match: (event: E) => A | null;
 };
+
+export type ActionReducerOptions<S, A> = {
+  guard?: (state: S, action: A) => boolean;
+}

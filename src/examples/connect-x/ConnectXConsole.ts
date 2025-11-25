@@ -5,8 +5,7 @@ import {
   ConnectXEngine,
   ConnectXTimeAdapter,
   ConnectXTimeline,
-  ConnectXStateRecorder,
-  ConnectXSnapshot
+  ConnectXStateRecorder
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
@@ -82,7 +81,7 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private render() {
     console.clear();
 
-    const snapshot = this.snapshot;
+    const snapshot = this.adapter.nextSnapshot(this.timeline);
     if (!snapshot) return;
 
     const { cursorX, currentPlayerIndex, outcome, cells } = snapshot;
@@ -106,10 +105,6 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
 
     console.log(output);
-  }
-
-  private get snapshot(): ConnectXSnapshot<T> | undefined {
-    return this.adapter.nextSnapshot(this.timeline);
   }
 
   private exit() {
