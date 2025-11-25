@@ -53,10 +53,11 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
       }
       const action = KEY_TO_ACTION.match(key.toLowerCase());
       if (!action) return;
-      this.processAction(action);
+
+      this.processAction(action); // records quit into timeline
       this.render();
 
-      if (this.state.outcome) {
+      if (action.type === "quit") {
         this.exit();
       }
     });
@@ -84,23 +85,25 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     const snapshot = this.adapter.nextSnapshot(this.timeline);
     if (!snapshot) return;
 
-    const { cursorX, currentPlayerIndex, outcome, cells } = snapshot;
+    const { boardCursorIndex, playerCursorIndex, cells } = snapshot;
     const [width, height] = this.state.board.bounds;
+    const outcome = this.state.outcome;
 
-    let output = `${this.getPlayerToken(currentPlayerIndex)}'s Turn\n\n`;
+    let output = `${this.getPlayerToken(playerCursorIndex)}'s Turn\n\n`;
 
     for (let col = 0; col < width; col++) {
-      output += cursorX === col ? " ↓ " : "   ";
+      output += boardCursorIndex === col ? " ↓ " : "   ";
     }
-    output += "\n" + DenseWorld.toStringFromData2D(
+    output += "\n";
+    output += DenseWorld.toStringFromData2D(
       cells, width, height,
       {
         defaultValue: this.state.board.defaultValue,
         cellPadding: " "
       }
-    );
-    output += `\nMove: ${this.timeline.index + 1}/${this.timeline.length}\n`;
-    output += `Cursor Position: Column ${cursorX + 1}\n`;
+    ) + "\n";
+    output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
+    output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     if (outcome) output += `Outcome: ${outcome}\n`;
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
 

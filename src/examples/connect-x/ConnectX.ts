@@ -40,17 +40,15 @@ export interface ConnectXState<T> {
 // Fully reconstructable state at a point in time (assuming constant board bounds)
 export interface ConnectXSnapshot<T> {
   cells: T[];
-  cursorX: number;
-  currentPlayerIndex: number;
-  outcome?: ConnectXOutcome;
+  boardCursorIndex: number;
+  playerCursorIndex: number;
 }
 
 // Difference between two snapshots
 export interface ConnectXPatch<T> {
   cells: Patch2D<T>[];
-  cursorX?: number;
-  currentPlayerIndex?: number;
-  outcome?: ConnectXOutcome;
+  boardCursorIndex?: number;
+  playerCursorIndex?: number;
 }
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
@@ -107,13 +105,12 @@ export class ConnectXTimeAdapter<T> {
   }
 
   takeSnapshot(): ConnectXSnapshot<T> {
-    const { board, boardCursor, playerCursor, outcome } = this.state;
+    const { board, boardCursor, playerCursor } = this.state;
 
     return {
       cells: board.toArray(),
-      cursorX: boardCursor.values[0],
-      currentPlayerIndex: playerCursor.values[0],
-      outcome
+      boardCursorIndex: boardCursor.values[0],
+      playerCursorIndex: playerCursor.values[0]
     };
   }
 
@@ -123,14 +120,11 @@ export class ConnectXTimeAdapter<T> {
   createPatch(prev: ConnectXSnapshot<T>, next: ConnectXSnapshot<T>): ConnectXPatch<T> {
     const patch: ConnectXPatch<T> = {
       cells: patch2D(prev.cells, next.cells, this.width, this.height),
-      cursorX: next.cursorX
+      boardCursorIndex: next.boardCursorIndex
     };
 
-    if (prev.currentPlayerIndex !== next.currentPlayerIndex) {
-      patch.currentPlayerIndex = next.currentPlayerIndex;
-    }
-    if (prev.outcome !== next.outcome) {
-      patch.outcome = next.outcome;
+    if (prev.playerCursorIndex !== next.playerCursorIndex) {
+      patch.playerCursorIndex = next.playerCursorIndex;
     }
     return patch;
   }
@@ -138,23 +132,19 @@ export class ConnectXTimeAdapter<T> {
   applyPatch(base: ConnectXSnapshot<T>, patch: ConnectXPatch<T>): ConnectXSnapshot<T> {
     const next: ConnectXSnapshot<T> = {
       cells: base.cells.slice(),
-      cursorX: base.cursorX,
-      currentPlayerIndex: base.currentPlayerIndex,
-      outcome: base.outcome
+      boardCursorIndex: base.boardCursorIndex,
+      playerCursorIndex: base.playerCursorIndex
     };
 
     for (const cell of patch.cells) {
       const index = cell.y * this.width + cell.x;
       next.cells[index] = cell.value;
     }
-    if (patch.cursorX !== undefined) {
-      next.cursorX = patch.cursorX;
+    if (patch.boardCursorIndex !== undefined) {
+      next.boardCursorIndex = patch.boardCursorIndex;
     }
-    if (patch.currentPlayerIndex !== undefined) {
-      next.currentPlayerIndex = patch.currentPlayerIndex;
-    }
-    if (patch.outcome !== undefined) {
-      next.outcome = patch.outcome;
+    if (patch.playerCursorIndex !== undefined) {
+      next.playerCursorIndex = patch.playerCursorIndex;
     }
     return next;
   }
