@@ -165,7 +165,7 @@ export class ConnectXTimeAdapter<T> {
 // ---------------------------------------------------------------------------
 
 export class ConnectXGame<T extends StringRenderable> {
-  static readonly QUADRANTS = Vector2.toArrays(Vector2.quadrants);
+  static readonly DIRECTION_COORDS = Vector2.toArrays(Vector2.quadrants);
 
   readonly settings: ConnectXSettings<T>;
   readonly state: ConnectXState<T>;
@@ -223,7 +223,7 @@ export class ConnectXGame<T extends StringRenderable> {
     const { winToken, winLength } = this.settings;
     const isToken = this.isToken;
 
-    for (const direction of ConnectXGame.QUADRANTS) {
+    for (const direction of ConnectXGame.DIRECTION_COORDS) {
       const line = findLine(lastMove, direction, winLength, board.bounds, isToken);
 
       if (line) {
