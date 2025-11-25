@@ -3,7 +3,7 @@ import { BaseWorld } from "./World";
 
 export class DenseWorld<T> extends BaseWorld<T> {
   private data: T[];
-  private readonly defaultValue: T | undefined;
+  private readonly defaultValue: T;
 
   constructor(options: WorldOptions<T>) {
     super({ ...options, backend: "dense" });
@@ -16,9 +16,9 @@ export class DenseWorld<T> extends BaseWorld<T> {
     }
   }
 
-  get(coord: Coord): T | undefined {
+  get(coord: Coord): T {
     const index = this.toIndex(coord);
-    if (index < 0) return undefined; // non-strict case
+    if (index < 0) return this.defaultValue; // non-strict case
     return this.data[index];
   }
 
@@ -66,7 +66,7 @@ export class DenseWorld<T> extends BaseWorld<T> {
     return this.get(coord) === this.defaultValue;
   }
 
-  toString(cellPadding = "", rowSeparator = "\n") {
+  toString2D(cellPadding = "", rowSeparator = "\n") {
     let out = "";
 
     if (this.bounds.length === 1) {
@@ -98,7 +98,7 @@ export class DenseWorld<T> extends BaseWorld<T> {
     return out;
   }
 
-  // get values() {
-  //   return this.data;
-  // }
+  get cells(): T[] {
+    return this.data.slice();
+  }
 }

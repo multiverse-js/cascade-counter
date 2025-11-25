@@ -14,7 +14,7 @@ export interface WorldOptions<T> {
   backend?: WorldBackend;
 
   /** Optional default value for dense worlds; sparse worlds treat "missing" as empty. */
-  defaultValue?: T;
+  defaultValue: T;
 
   /**
    * Optional flag: if true, treat out-of-bounds access as an error.

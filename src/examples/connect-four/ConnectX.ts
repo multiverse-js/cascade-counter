@@ -4,12 +4,16 @@ import { offsetAxis } from "../../soul/Axis";
 
 import { Coord } from "../../space/types";
 import { dropAlongAxis, findLine } from "../../space/Space";
-import { generateQuadrantVectors } from "../../space/Vector";
+import { Vector2 } from "../../space/Vector2";
 
 import { DenseWorld } from "../../reality/DenseWorld";
 
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
+
+import { CellPatch2D } from "../../time/types";
+import { Timeline } from "../../time/Timeline";
+import { diff2DArray } from "../../time/StateRecorder";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -29,8 +33,26 @@ export interface ConnectXState<T> {
   readonly boardCursor: CascadeCounter;
   readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
-  outcome?: "win" | "draw" | "quit";
+  outcome?: ConnextXOutcome;
 }
+
+// Fully reconstructable state at a point in time (assuming constant board bounds)
+export interface ConnectXSnapshot<T> {
+  cells: T[];
+  cursorX: number;
+  currentPlayerIndex: number;
+  outcome?: ConnextXOutcome;
+}
+
+// Difference between two snapshots
+export interface ConnectXPatch<T> {
+  cells: CellPatch2D<T>[];
+  cursorX: number;
+  currentPlayerIndex?: number;
+  outcome?: ConnextXOutcome;
+}
+
+export type ConnextXOutcome = "win" | "draw" | "quit";
 
 export type ConnectXAction =
   | Action<"moveLeft">
@@ -42,7 +64,36 @@ export type ConnectXAction =
 // Constants
 // ---------------------------------------------------------------------------
 
-const DIRECTIONS = generateQuadrantVectors(2); // right, down, diags...
+const QUADRANTS = Vector2.toArrays(Vector2.quadrants);
+
+const applyConnectXPatch = <T>(
+  base: ConnectXSnapshot<T>,
+  patch: ConnectXPatch<T>,
+  width: number
+): ConnectXSnapshot<T> => {
+  const next: ConnectXSnapshot<T> = {
+    cells: base.cells.slice(),
+    cursorX: base.cursorX,
+    currentPlayerIndex: base.currentPlayerIndex,
+    outcome: base.outcome
+  };
+
+  for (const cell of patch.cells) {
+    const index = cell.y * width + cell.x;
+    next.cells[index] = cell.value;
+  }
+
+  if (patch.cursorX !== undefined) {
+    next.cursorX = patch.cursorX;
+  }
+  if (patch.currentPlayerIndex !== undefined) {
+    next.currentPlayerIndex = patch.currentPlayerIndex;
+  }
+  if (patch.outcome !== undefined) {
+    next.outcome = patch.outcome;
+  }
+  return next;
+}
 
 // ---------------------------------------------------------------------------
 // Core game logic (engine-agnostic)
@@ -51,22 +102,28 @@ const DIRECTIONS = generateQuadrantVectors(2); // right, down, diags...
 export class ConnectXGame<T extends StringRenderable> {
   readonly settings: ConnectXSettings<T>;
   readonly state: ConnectXState<T>;
+  readonly timeline: Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.settings = settings;
     this.state = {
       board: new DenseWorld<T>({
-        bounds: [this.settings.boardWidth, this.settings.boardHeight],
+        bounds: [settings.boardWidth, settings.boardHeight],
         strictBounds: true,
-        defaultValue: this.settings.emptyToken
+        defaultValue: settings.emptyToken
       }),
       boardCursor: CascadeCounter.fromFixedBases(
-        [this.settings.boardWidth]
+        [settings.boardWidth]
       ),
       playerCursor: CascadeCounter.fromFixedBases(
-        [this.settings.playerTokens.length]
+        [settings.playerTokens.length]
       )
     };
+    this.timeline = new Timeline<ConnectXSnapshot<T>, ConnectXPatch<T>>({
+      mode: "diff",
+      applyDiff: (base, patch) => applyConnectXPatch(base, patch, settings.boardWidth)
+    });
+    this.timeline.pushFull(this.liveSnapshot);
   }
 
   moveCursor(direction: 1 | -1): void {
@@ -81,7 +138,7 @@ export class ConnectXGame<T extends StringRenderable> {
     const { boardCursor, board } = this.state;
 
     const droppedCoord = dropAlongAxis(
-      [boardCursor.values[0], 0],               // (x, y = 0)
+      [boardCursor.values[0], 0],         // (x, y = 0)
       1,                                  // axis 1 = y
       1,                                  // gravity down
       board.bounds,                       // board boundaries
@@ -95,22 +152,21 @@ export class ConnectXGame<T extends StringRenderable> {
     return true;
   }
 
+  isToken = (coord: Coord): boolean =>
+    this.state.board.get(coord) === this.currentPlayerToken;
+
   isWin(): boolean {
     const { lastMove, board } = this.state;
-
     if (!lastMove) return false;
 
-    for (const direction of DIRECTIONS) {
-      const line = findLine(
-        lastMove,
-        direction,
-        this.settings.winLength,
-        board.bounds,
-        (coord) => board.get(coord) === this.currentPlayerToken
-      );
+    const { winToken, winLength } = this.settings;
+    const isToken = this.isToken;
+
+    for (const direction of QUADRANTS) {
+      const line = findLine(lastMove, direction, winLength, board.bounds, isToken);
 
       if (line) {
-        board.drawLine(line, this.settings.winToken);
+        board.drawLine(line, winToken);
         return true;
       }
     }
@@ -125,6 +181,52 @@ export class ConnectXGame<T extends StringRenderable> {
       if (board.isEmpty([x, 0])) return false;
     }
     return true;
+  }
+
+  isCursorAction(action: ConnectXAction): boolean {
+    return action.type === "moveLeft" || action.type === "moveRight";
+  }
+
+  diffSnapshots<T>(
+    prev: ConnectXSnapshot<T>,
+    next: ConnectXSnapshot<T>
+  ): ConnectXPatch<T> {
+    const [width, height] = this.state.board.bounds;
+    const cells: CellPatch2D<T>[] = diff2DArray(prev.cells, next.cells, width, height);
+    const patch: ConnectXPatch<T> = {
+      cells: cells,
+      cursorX: next.cursorX
+    };
+
+    if (prev.currentPlayerIndex !== next.currentPlayerIndex) {
+      patch.currentPlayerIndex = next.currentPlayerIndex;
+    }
+    if (prev.outcome !== next.outcome) {
+      patch.outcome = next.outcome;
+    }
+    return patch;
+  }
+
+  get liveSnapshot(): ConnectXSnapshot<T> {
+    const { board, boardCursor, playerCursor, outcome } = this.state;
+
+    return {
+      cells: board.cells,
+      cursorX: boardCursor.values[0],
+      currentPlayerIndex: playerCursor.values[0],
+      outcome
+    };
+  }
+
+  get currentSnapshot(): ConnectXSnapshot<T> {
+    if (this.timeline.isAtLatest()) {
+      return this.liveSnapshot;
+    }
+    const snapshot = this.timeline.getCurrentSnapshot();
+    if (!snapshot) {
+      return this.liveSnapshot;
+    }
+    return snapshot;
   }
 
   get currentPlayerToken(): T {
@@ -149,41 +251,42 @@ export class ConnectXGame<T extends StringRenderable> {
 // Reducer: Actions → state transitions
 // ---------------------------------------------------------------------------
 
-export const connectXReducer = createActionReducer<ConnectXGame<any>, ConnectXAction>({
-  moveLeft(game) {
-    if (game.state.outcome) return game;
+function connectXActionReducer<T extends StringRenderable>() {
+  return createActionReducer<ConnectXGame<T>, ConnectXAction>({
+    moveLeft(game) {
+      if (game.state.outcome) return game;
 
-    game.moveCursor(-1);
-    return game;
-  },
+      game.moveCursor(-1);
+      return game;
+    },
 
-  moveRight(game) {
-    if (game.state.outcome) return game;
+    moveRight(game) {
+      if (game.state.outcome) return game;
 
-    game.moveCursor(1);
-    return game;
-  },
+      game.moveCursor(1);
+      return game;
+    },
 
-  dropPiece(game) {
-    if (game.state.outcome) return game;
-    if (!game.dropPiece()) return game;
+    dropPiece(game) {
+      if (game.state.outcome) return game;
+      if (!game.dropPiece()) return game;
 
-    if (game.isWin()) {
-      game.state.outcome = "win";
-    } else if (game.isDraw()) {
-      game.state.outcome = "draw";
-    } else {
-      game.switchPlayer();
+      if (game.isWin()) {
+        game.state.outcome = "win";
+      } else if (game.isDraw()) {
+        game.state.outcome = "draw";
+      } else {
+        game.switchPlayer();
+      }
+      return game;
+    },
+
+    quit(game) {
+      game.state.outcome = "quit";
+      return game;
     }
-
-    return game;
-  },
-
-  quit(game) {
-    game.state.outcome = "quit";
-    return game;
-  }
-});
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Engine wrapper (game logic + reducer)
@@ -195,6 +298,10 @@ export class ConnectXEngine<T extends StringRenderable> extends Engine<
   ConnectXAction
 > {
   constructor(game: ConnectXGame<T>) {
-    super(game, game.state, connectXReducer);
+    super(
+      game,
+      game.state,
+      connectXActionReducer<T>()
+    );
   }
 }
