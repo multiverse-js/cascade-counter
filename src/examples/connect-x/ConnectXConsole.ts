@@ -88,15 +88,15 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     const snapshot = this.adapter.nextSnapshot(this.timeline);
     if (!snapshot) return;
 
-    const { boardCursorIndex, playerCursorIndex, cells, outcome } = snapshot;
+    const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
     const [width, height] = this.state.board.bounds;
     const token = this.getPlayerToken(playerCursorIndex);
 
     let output = `${token}'s Turn\n\n`;
-    for (let col = 0; col < width; col++) {
-      output += boardCursorIndex === col ? " ↓ " : "   ";
-    }
+
+    for (let i = 0; i < width; i++) output += boardCursorIndex === i ? " ↓ " : "   ";
     output += "\n";
+
     output += DenseWorld.toStringFromData2D(
       cells, width, height,
       {
