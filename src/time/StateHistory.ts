@@ -8,14 +8,14 @@ export interface StateHistoryConfig {
 }
 
 export interface StateHistoryHooks<State, Snapshot, Patch> {
-  takeSnapshot: (state: State) => Snapshot;
-  applySnapshotToState: (snapshot: Snapshot, state: State) => void;
+  createSnapshot: (state: State) => Snapshot;
+  applySnapshot: (snapshot: Snapshot, state: State) => void;
   createPatch: (prev: Snapshot, next: Snapshot) => Patch;
   applyPatch: (base: Snapshot, patch: Patch) => Snapshot;
   isEmptyPatch?: (patch: Patch) => boolean;
 }
 
-export class StateHistory<State, Snapshot, Patch> {
+export class StateHistory<State, Snapshot, Patch = Snapshot> {
   readonly state: State;
   readonly timeline: Timeline<Snapshot, Patch>;
   readonly recorder: TimelineRecorder<State, Snapshot, Patch>;
@@ -38,7 +38,7 @@ export class StateHistory<State, Snapshot, Patch> {
 
     this.recorder = new TimelineRecorder<State, Snapshot, Patch>({
       timeline: this.timeline,
-      snapshot: () => this.hooks.takeSnapshot(this.state),
+      snapshot: () => this.hooks.createSnapshot(this.state),
       patch: (from, to) => this.hooks.createPatch(from, to),
       isEmptyPatch: (patch) =>
         this.hooks.isEmptyPatch ? this.hooks.isEmptyPatch(patch) : false,
@@ -51,11 +51,11 @@ export class StateHistory<State, Snapshot, Patch> {
   /** Resolve the snapshot to use for the current position (history or live). */
   resolveSnapshot(): Snapshot | undefined {
     if (this.timeline.isAtPresent()) {
-      return this.hooks.takeSnapshot(this.state);
+      return this.hooks.createSnapshot(this.state);
     }
     const snapshot = this.timeline.getCurrentSnapshot();
     if (!snapshot) {
-      return this.hooks.takeSnapshot(this.state);
+      return this.hooks.createSnapshot(this.state);
     }
     return snapshot;
   }
@@ -64,7 +64,7 @@ export class StateHistory<State, Snapshot, Patch> {
   applySnapshot(): Snapshot | undefined {
     const snapshot = this.timeline.getCurrentSnapshot();
     if (snapshot) {
-      this.hooks.applySnapshotToState(snapshot, this.state);
+      this.hooks.applySnapshot(snapshot, this.state);
     }
     return snapshot;
   }

@@ -14,7 +14,7 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 import { Patch2D } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
-import { applyGridPatch2D, computeGridPatch2D, computeScalarPatch } from "../../time/Patch";
+import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D } from "../../time/Patch";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -73,7 +73,7 @@ export type ConnectXTimeline<T> = Timeline<
 >;
 
 // ---------------------------------------------------------------------------
-// Timeline & state recorder adapter (engine-agnostic)
+// State history factory (engine-agnostic)
 // ---------------------------------------------------------------------------
 
 export function createConnectXStateHistory<T>(
@@ -82,7 +82,7 @@ export function createConnectXStateHistory<T>(
   return new StateHistory<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>(
     state,
     {
-      takeSnapshot: (state) => {
+      createSnapshot: (state) => {
         const { board, boardCursor, playerCursor, outcome } = state;
 
         return {
@@ -91,16 +91,6 @@ export function createConnectXStateHistory<T>(
           playerCursorIndex: playerCursor.values[0],
           outcome
         };
-      },
-
-      applySnapshotToState: (snapshot, state) => {
-        const { board, boardCursor, playerCursor } = state;
-        const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
-
-        board.loadFromArray(cells);
-        boardCursor.setAt(0, boardCursorIndex);
-        playerCursor.setAt(0, playerCursorIndex);
-        state.outcome = outcome;
       },
 
       createPatch: (prev, next) => {
@@ -121,6 +111,16 @@ export function createConnectXStateHistory<T>(
 
           outcome: computeScalarPatch(prev.outcome, next.outcome)
         };
+      },
+
+      applySnapshot: (snapshot, state) => {
+        const { board, boardCursor, playerCursor } = state;
+        const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
+
+        board.loadFromArray(cells);
+        boardCursor.setAt(0, boardCursorIndex);
+        playerCursor.setAt(0, playerCursorIndex);
+        state.outcome = outcome;
       },
 
       applyPatch: (base, patch) => {
@@ -241,7 +241,7 @@ export class ConnectXGame<T extends StringRenderable> {
 }
 
 // ---------------------------------------------------------------------------
-// Engine wrapper (game logic + action-to-state-transiton reducer)
+// Engine wrapper (game logic + action reducer)
 // ---------------------------------------------------------------------------
 
 export class ConnectXEngine<T extends StringRenderable> extends Engine<
