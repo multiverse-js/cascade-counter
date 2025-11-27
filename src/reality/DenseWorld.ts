@@ -3,36 +3,36 @@ import type { Coord, WorldOptions } from "./types";
 import { BaseWorld } from "./World";
 
 export class DenseWorld<T> extends BaseWorld<T> {
-  private data: T[];
-  readonly defaultValue: T;
+  private cells: T[];
+  readonly defaultValue: T | undefined;
 
   constructor(options: WorldOptions<T>) {
     super({ ...options, backend: "dense" });
 
+    this.cells = new Array<T>(this.size);
     this.defaultValue = options.defaultValue;
-    this.data = new Array<T>(this.size);
 
     if (this.defaultValue !== undefined) {
-      this.data.fill(this.defaultValue);
+      this.cells.fill(this.defaultValue);
     }
   }
 
-  get(coord: Coord): T {
+  get(coord: Coord): T | undefined {
     const index = this.toIndex(coord);
     if (index < 0) return this.defaultValue; // non-strict case
-    return this.data[index];
+    return this.cells[index];
   }
 
   set(coord: Coord, value: T): void {
     const index = this.toIndex(coord);
     if (index < 0) return;
-    this.data[index] = value;
+    this.cells[index] = value;
   }
 
+  // In dense worlds, "has" means "in-bounds", not "non-default".
   has(coord: Coord): boolean {
     const index = this.toIndex(coord);
     if (index < 0) return false;
-    // In dense worlds, "has" means "in-bounds", not "non-default".
     return true;
   }
 
@@ -40,24 +40,21 @@ export class DenseWorld<T> extends BaseWorld<T> {
     const index = this.toIndex(coord);
     if (index < 0) return;
     if (this.defaultValue !== undefined) {
-      this.data[index] = this.defaultValue;
-    } else {
-      // @ts-expect-error assigning undefined to T
-      this.data[index] = undefined;
+      this.cells[index] = this.defaultValue;
     }
   }
 
   clear(): void {
     if (this.defaultValue !== undefined) {
-      this.data.fill(this.defaultValue);
+      this.cells.fill(this.defaultValue);
     } else {
-      this.data = new Array<T>(this.size);
+      this.cells = new Array<T>(this.size);
     }
   }
 
   forEach(fn: (value: T, coord: Coord) => void): void {
     for (let index = 0; index < this.size; index++) {
-      const value = this.data[index];
+      const value = this.cells[index];
       const coord = this.fromIndex(index);
       fn(value, coord);
     }
@@ -68,7 +65,7 @@ export class DenseWorld<T> extends BaseWorld<T> {
   }
 
   toArray(): T[] {
-    return this.data.slice();
+    return this.cells.slice();
   }
 }
 

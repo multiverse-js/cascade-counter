@@ -5,50 +5,10 @@ import type {
 } from "./types";
 
 /**
- * A generic N-dimensional state container.
- *
- * World is responsible for:
- * - Storing values at coordinates
- * - Knowing its own bounds
- * - Mapping between coord <-> linear index
- */
-export interface World<T> {
-  readonly dimensions: number;
-  readonly bounds: Bounds;
-  readonly size: number; // total capacity for dense; upper bound for sparse
-
-  /** Returns value at coord, or undefined if empty / out-of-bounds. */
-  get(coord: Coord): T | undefined;
-
-  /** Sets value at coord. May throw if out-of-bounds in strict mode. */
-  set(coord: Coord, value: T): void;
-
-  /** True iff there is a stored value at coord (sparse) or in-bounds (dense). */
-  has(coord: Coord): boolean;
-
-  /** Removes value at coord (sparse); for dense, typically sets to defaultValue. */
-  delete(coord: Coord): void;
-
-  /** Clears all stored values. */
-  clear(): void;
-
-  /** Iterates over all stored values (dense: all cells, sparse: non-empty cells). */
-  forEach(fn: (value: T, coord: Coord) => void): void;
-
-  /** Coordinate → linear index (0..size-1). */
-  toIndex(coord: Coord): number;
-
-  /** Linear index → coordinate. */
-  fromIndex(index: number): Coord;
-
-  //get values(): T;
-}
-
-/**
  * Base class providing shared indexing logic & bounds checks.
  * Concrete subclasses only need to implement storage operations.
  */
-export abstract class BaseWorld<T> implements World<T> {
+export abstract class BaseWorld<T> {
   readonly dimensions: number;
   readonly bounds: Bounds;
   readonly size: number;
@@ -140,7 +100,6 @@ export abstract class BaseWorld<T> implements World<T> {
   abstract delete(coord: Coord): void;
   abstract clear(): void;
   abstract forEach(fn: (value: T, coord: Coord) => void): void;
-  //abstract get values(): T;
 }
 
 /** Compute row-major strides: [1, b0, b0*b1, ...] */

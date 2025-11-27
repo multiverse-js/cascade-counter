@@ -6,7 +6,7 @@ export class SparseWorld<T> extends BaseWorld<T> {
 
   constructor(options: WorldOptions<T>) {
     super({ ...options, backend: "sparse" });
-    this.cells = new Map();
+    this.cells = new Map<string, T>();
   }
 
   private keyFromCoord(coord: Coord): string {
