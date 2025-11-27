@@ -21,12 +21,12 @@ import { computePatch2D } from "../../time/CellPatch";
 // ---------------------------------------------------------------------------
 
 export interface ConnectXSettings<T> {
-  boardWidth: number;
-  boardHeight: number;
-  playerTokens: ReadonlyArray<T>;
-  emptyToken: T;
-  winToken: T;
-  winLength: number;
+  readonly boardWidth: number;
+  readonly boardHeight: number;
+  readonly playerTokens: ReadonlyArray<T>;
+  readonly emptyToken: T;
+  readonly winToken: T;
+  readonly winLength: number;
 }
 
 export interface ConnectXState<T> {
@@ -38,16 +38,16 @@ export interface ConnectXState<T> {
 }
 
 // Fully reconstructable state at a point in time (assuming constant board bounds)
-export interface ConnectXSnapshot<T> {
-  readonly cells: T[];
+export type ConnectXSnapshot<T> = {
+  readonly cells: ReadonlyArray<T>;
   readonly boardCursorIndex: number;
   readonly playerCursorIndex: number;
   readonly outcome?: ConnectXOutcome;
-}
+};
 
 // Difference between two snapshots
 export interface ConnectXPatch<T> {
-  readonly cells: Patch2D<T>[];
+  readonly cells: ReadonlyArray<Patch2D<T>>;
   readonly boardCursorIndex?: number;
   readonly playerCursorIndex?: number;
   readonly outcome?: ConnectXOutcome;
@@ -108,9 +108,15 @@ export function createConnectXStateHistory<T>(
 
         return {
           cells: computePatch2D(prev.cells, next.cells, width, height),
-          boardCursorIndex: prev.boardCursorIndex !== next.boardCursorIndex ? next.boardCursorIndex : undefined,
-          playerCursorIndex: prev.playerCursorIndex !== next.playerCursorIndex ? next.playerCursorIndex : undefined,
-          outcome: prev.outcome !== next.outcome ? next.outcome : undefined
+          boardCursorIndex: prev.boardCursorIndex !== next.boardCursorIndex
+            ? next.boardCursorIndex
+            : undefined,
+          playerCursorIndex: prev.playerCursorIndex !== next.playerCursorIndex
+            ? next.playerCursorIndex
+            : undefined,
+          outcome: prev.outcome !== next.outcome
+            ? next.outcome
+            : undefined
         };
       },
 

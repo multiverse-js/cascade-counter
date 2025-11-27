@@ -78,4 +78,6 @@ export type MinOptions = {
   zeroIsMin?: boolean
 };
 
-export type StringRenderable = { toString(): string };
+export type StringRenderable = {
+  toString(): string
+};
