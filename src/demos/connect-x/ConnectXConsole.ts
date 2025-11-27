@@ -5,13 +5,14 @@ import {
   ConnectXAction,
   ConnectXEngine,
   ConnectXSnapshot,
+  ConnectXTimeline,
   ConnectXStateHistory,
   createConnectXStateHistory
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
-import { DenseGrid } from "../../reality/DenseGrid";
+import { gridToString } from "../../reality/DenseGrid";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -29,12 +30,14 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly state: ConnectXState<T>;
   private readonly engine: ConnectXEngine<T>;
   private readonly history: ConnectXStateHistory<T>;
+  private readonly timeline: ConnectXTimeline<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.state = this.game.state;
     this.engine = new ConnectXEngine(this.game);
     this.history = createConnectXStateHistory(this.state);
+    this.timeline = this.history.timeline;
   }
 
   start() {
@@ -50,14 +53,14 @@ class ConnectXConsole<T extends StringRenderable> {
       }
       // time travel (← / →)
       if (key === LEFT_ARROW) {
-        if (this.history.timeline.stepBackward()) {
+        if (this.timeline.stepBackward()) {
           const snap = this.history.applySnapshot();
           this.render(snap);
         }
         return;
       }
       if (key === RIGHT_ARROW) {
-        if (this.history.timeline.stepForward()) {
+        if (this.timeline.stepForward()) {
           const snap = this.history.applySnapshot();
           this.render(snap);
         }
@@ -123,14 +126,14 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "\n";
 
     // board
-    output += DenseGrid.gridToString(cells, width, height, {
+    output += gridToString(cells, width, height, {
       defaultValue: board.defaultValue,
       cellPadding: " "
     }) + "\n";
 
     // HUD
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
-    output += `Move: ${this.history.timeline.index + 1}/${this.history.timeline.length}\n`;
+    output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 

@@ -12,8 +12,8 @@ import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
 
 import { Patch2D } from "../../time/types";
-import { StateHistory } from "../../time/StateHistory";
 import { Timeline } from "../../time/Timeline";
+import { StateHistory } from "../../time/StateHistory";
 import { patch2D } from "../../time/Patch";
 
 // ---------------------------------------------------------------------------
@@ -65,10 +65,10 @@ export type ConnectXStateHistory<T> = StateHistory<
   ConnectXState<T>,
   ConnectXSnapshot<T>,
   ConnectXPatch<T>
->
+>;
 
 export type ConnectXTimeline<T> = Timeline<
-  ConnectXState<T>,
+  ConnectXSnapshot<T>,
   ConnectXPatch<T>
 >;
 

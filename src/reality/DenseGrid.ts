@@ -79,47 +79,6 @@ export class DenseGrid<T> extends BaseGrid<T> {
     }
   }
 
-  static gridToString<T extends StringRenderable>(
-    cells: ReadonlyArray<T>,
-    columns: number,
-    rows: number,
-    options: {
-      defaultValue?: T;
-      cellPadding?: string;
-      rowSeparator?: string;
-    } = {}
-  ): string {
-    const {
-      defaultValue,
-      cellPadding = "",
-      rowSeparator = "\n",
-    } = options;
-
-    const expected = columns * rows;
-
-    if (cells.length !== expected) {
-      throw new Error(
-        `gridToString(): expected '${expected}' cells in the grid, got ${cells.length}`
-      );
-    }
-
-    let out = "";
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < columns; x++) {
-        const raw = cells[y * columns + x];
-
-        if (defaultValue !== undefined && raw === defaultValue) {
-          out += ` ${String(defaultValue)} `;
-        } else {
-          out += `${String(raw)}${cellPadding}`;
-        }
-      }
-      out += rowSeparator;
-    }
-
-    return out;
-  }
-
   gridToString(
     this: DenseGrid<StringRenderable>,
     options: {
@@ -129,9 +88,50 @@ export class DenseGrid<T> extends BaseGrid<T> {
   ): string {
     const [columns, rows] = this.bounds;
 
-    return DenseGrid.gridToString(this.cells, columns, rows, {
+    return gridToString(this.cells, columns, rows, {
       defaultValue: this.defaultValue,
       ...options
     });
   }
+}
+
+export function gridToString<T extends StringRenderable>(
+  cells: ReadonlyArray<T>,
+  columns: number,
+  rows: number,
+  options: {
+    defaultValue?: T;
+    cellPadding?: string;
+    rowSeparator?: string;
+  } = {}
+): string {
+  const {
+    defaultValue,
+    cellPadding = "",
+    rowSeparator = "\n",
+  } = options;
+
+  const expected = columns * rows;
+
+  if (cells.length !== expected) {
+    throw new Error(
+      `gridToString(): expected '${expected}' cells in the grid, got ${cells.length}`
+    );
+  }
+
+  let out = "";
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      const raw = cells[y * columns + x];
+
+      if (defaultValue !== undefined && raw === defaultValue) {
+        out += ` ${String(defaultValue)} `;
+      } else {
+        out += `${String(raw)}${cellPadding}`;
+      }
+    }
+    out += rowSeparator;
+  }
+
+  return out;
 }
