@@ -128,7 +128,7 @@ export class ConnectXTimeAdapter<T> {
 
   /** Apply snapshot at current cursor back into state, and return it */
   applyCurrentSnapshot = (timeline: ConnectXTimeline<T>): ConnectXSnapshot<T> | undefined =>
-    timeline.applyCurrentSnapshot(this.applySnapshot);
+    timeline.applyCurrentSnapshot((snap) => this.applySnapshot(snap));
 
   createPatch(prev: ConnectXSnapshot<T>, next: ConnectXSnapshot<T>): ConnectXPatch<T> {
     const patch: ConnectXPatch<T> = {

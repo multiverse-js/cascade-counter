@@ -197,7 +197,24 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   // Keep entries up to current index; drop everything after
   private truncateFuture(): void {
     if (this.index < this.entries.length - 1) {
+      // Keep entries up to current cursor
       this.entries.length = this.index + 1;
+
+      if (this.entries.length === 0) {
+        this.latestSnapshot = undefined;
+        return;
+      }
+
+      // Recompute latestSnapshot from the new last entry
+      const lastIndex = this.entries.length - 1;
+      const lastEntry = this.entries[lastIndex];
+
+      if (lastEntry.snapshot) {
+        this.latestSnapshot = lastEntry.snapshot;
+      } else {
+        // Patch mode: reconstruct last snapshot from history
+        this.latestSnapshot = this.getSnapshotAt(lastIndex)!;
+      }
     }
   }
 }

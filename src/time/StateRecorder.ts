@@ -19,8 +19,6 @@ export class StateRecorder<State, Snapshot, Patch> {
   private readonly patch: (from: Snapshot, to: Snapshot) => Patch;
   private readonly isEmptyPatch?: (patch: Patch) => boolean;
 
-  private lastSnapshot?: Snapshot;
-
   constructor(options: StateRecorderOptions<State, Snapshot, Patch>) {
     this.timeline = options.timeline;
     this.snapshot = options.snapshot;
@@ -31,19 +29,19 @@ export class StateRecorder<State, Snapshot, Patch> {
   record(state: State, message?: string): number {
     const snap = this.snapshot(state);
 
-    if (this.lastSnapshot) {
-      const patch = this.patch(this.lastSnapshot, snap);
-
-      if (this.isEmptyPatch && this.isEmptyPatch(patch)) {
-        return this.timeline.index; // no-op, keep lastSnapshot as-is
-      }
-      const index = this.timeline.pushPatch(patch, message);
-      this.lastSnapshot = snap;
-      return index;
+    // First ever record: store full snapshot
+    if (this.timeline.length === 0) {
+      return this.timeline.pushFull(snap, message);
     }
 
-    const index = this.timeline.pushFull(snap, message); // initial record
-    this.lastSnapshot = snap;
-    return index;
+    // Baseline: the snapshot at the current cursor position
+    const prevSnapshot = this.timeline.getSnapshotAt(this.timeline.index)!;
+    const patch = this.patch(prevSnapshot, snap);
+
+    if (this.isEmptyPatch && this.isEmptyPatch(patch)) {
+      // No state change → no new history entry
+      return this.timeline.index;
+    }
+    return this.timeline.pushPatch(patch, message);
   }
 }
