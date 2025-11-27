@@ -30,16 +30,16 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.cursor === this.entries.length - 1;
   }
 
+  moveToFirst(): boolean {
+    if (this.entries.length === 0) return false;
+    this.cursor = 0;
+    return true;
+  }
+
   /** Move cursor to the latest entry, if any. */
   moveToPresent(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = this.entries.length - 1;
-    return true;
-  }
-
-  moveToFirst(): boolean {
-    if (this.entries.length === 0) return false;
-    this.cursor = 0;
     return true;
   }
 

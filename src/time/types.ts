@@ -33,3 +33,14 @@ export type ScalarPatch<T> = {
 }
 
 export type PatchDirection = "forward" | "backward";
+
+export interface Action<T extends string = string> {
+  type: T;
+  payload?: unknown;
+}
+
+export type TimelineAction =
+  | Action<"moveToFirst">
+  | Action<"moveToPresent">
+  | Action<"stepBackward">
+  | Action<"stepForward">;

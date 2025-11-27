@@ -48,49 +48,45 @@ class ConnectXConsole<T extends StringRenderable> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      // hard exit
-      if (key === CTRL_C) {
-        this.exit();
+      const snaphot = this.processRawKey(key);
+      if (snaphot) {
+        this.render(snaphot);
         return;
       }
-      // time travel (← / →)
-      if (key === LEFT_ARROW) {
-        const snap = this.history.stepBy(-1);
-        if (snap) this.render(snap);
-        return;
-      }
-      if (key === RIGHT_ARROW) {
-        const snap = this.history.stepBy(1);
-        if (snap) this.render(snap);
-        return;
-      }
-      if (key === L_LOWERCASE) {
-        if (this.history.timeline.moveToPresent()) {
-          const snap = this.history.applySnapshot();
-          this.render(snap);
-        }
-        return;
-      }
-      if (key === F_LOWERCASE) {
-        if (this.history.timeline.moveToFirst()) {
-          const snap = this.history.applySnapshot();
-          this.render(snap);
-        }
-        return;
-      }
-
       // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
 
       const quit = this.processAction(action);
-
       this.render(); // new frame
-
       if (quit) this.exit();
     });
 
     this.render(); // initial frame
+  }
+
+  private processRawKey(key: string): ConnectXSnapshot<T> | undefined {
+    switch (key) {
+      case CTRL_C: {
+        this.exit();
+      }
+      case LEFT_ARROW: {
+        return this.history.stepBy(-1);
+      }
+      case RIGHT_ARROW: {
+        return this.history.stepBy(1);
+      }
+      case L_LOWERCASE: {
+        if (this.history.timeline.moveToPresent()) {
+          return this.history.applySnapshot();
+        }
+      }
+      case F_LOWERCASE: {
+        if (this.history.timeline.moveToFirst()) {
+          return this.history.applySnapshot();
+        }
+      }
+    }
   }
 
   private processAction(action: ConnectXAction): boolean {
