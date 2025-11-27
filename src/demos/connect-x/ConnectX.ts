@@ -174,9 +174,11 @@ export class ConnectXGame<T extends StringRenderable> {
         strictBounds: true,
         defaultValue: settings.emptyToken
       }),
+
       boardCursor: CascadeCounter.fromFixedBases(
         [settings.boardWidth]
       ),
+
       playerCursor: CascadeCounter.fromFixedBases(
         [settings.playerTokens.length]
       )
