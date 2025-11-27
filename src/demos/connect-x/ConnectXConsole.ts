@@ -48,9 +48,10 @@ class ConnectXConsole<T extends StringRenderable> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      const snaphot = this.processRawKey(key);
-      if (snaphot) {
-        this.render(snaphot);
+      const success = this.processRawKey(key);
+      if (success) {
+        const snapshot = this.history.applySnapshot();
+        this.render(snapshot);
         return;
       }
       // state machine actions (A/D/W/Q)
@@ -62,30 +63,17 @@ class ConnectXConsole<T extends StringRenderable> {
       if (quit) this.exit();
     });
 
-    this.render(); // initial frame
+    this.render(); // initial frames
   }
 
-  private processRawKey(key: string): ConnectXSnapshot<T> | undefined {
+  private processRawKey(key: string): boolean {
     switch (key) {
-      case CTRL_C: {
-        this.exit();
-      }
-      case LEFT_ARROW: {
-        return this.history.stepBy(-1);
-      }
-      case RIGHT_ARROW: {
-        return this.history.stepBy(1);
-      }
-      case L_LOWERCASE: {
-        if (this.history.timeline.moveToPresent()) {
-          return this.history.applySnapshot();
-        }
-      }
-      case F_LOWERCASE: {
-        if (this.history.timeline.moveToFirst()) {
-          return this.history.applySnapshot();
-        }
-      }
+      case CTRL_C: this.exit();
+      case LEFT_ARROW: return this.timeline.stepBackward();
+      case RIGHT_ARROW: return this.timeline.stepForward();
+      case L_LOWERCASE: return this.timeline.moveToPresent();
+      case F_LOWERCASE: return this.timeline.moveToFirst();
+      default: return false;
     }
   }
 
