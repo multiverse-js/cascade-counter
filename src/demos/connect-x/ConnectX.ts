@@ -16,26 +16,22 @@ import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
 import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
 
-// ---------------------------------------------------------------------------
-// Types & interfaces
-// ---------------------------------------------------------------------------
-
-export interface ConnectXSettings<T> {
+export type ConnectXSettings<T> = {
   readonly boardWidth: number;
   readonly boardHeight: number;
   readonly playerTokens: ReadonlyArray<T>;
   readonly emptyToken: T;
   readonly winToken: T;
   readonly winLength: number;
-}
+};
 
-export interface ConnectXState<T> {
+export type ConnectXState<T> = {
   readonly board: DenseGrid<T>;
   readonly boardCursor: CascadeCounter;
   readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
   outcome?: ConnectXOutcome;
-}
+};
 
 // Fully reconstructable state at a point in time (assuming constant board bounds)
 export type ConnectXSnapshot<T> = {
@@ -46,12 +42,12 @@ export type ConnectXSnapshot<T> = {
 };
 
 // Difference between two snapshots
-export interface ConnectXPatch<T> {
+export type ConnectXPatch<T> = {
   readonly cells: GridPatch2D<T>;
   readonly boardCursorIndex?: ScalarPatch<number>;
   readonly playerCursorIndex?: ScalarPatch<number>;
   readonly outcome?: ScalarPatch<ConnectXOutcome>;
-}
+};
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
 

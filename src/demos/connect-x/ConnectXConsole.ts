@@ -48,6 +48,7 @@ class ConnectXConsole<T extends StringRenderable> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
+      // raw key press handler
       const success = this.processRawKey(key);
       if (success) {
         const snapshot = this.history.applySnapshot();
