@@ -1,2 +1,2 @@
 # cascade-counter
-A framework for navigating multidimensional spaces with dynamic bases and carryover logic, for flexible UIs and games.
+A general-purpose engine for discrete simulations with reversible time, N-dimensional worlds, and reducer-driven state transitions.
