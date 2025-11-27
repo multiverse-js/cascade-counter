@@ -1,5 +1,6 @@
 import {
   ConnectXGame,
+  ConnectXState,
   ConnectXSettings,
   ConnectXAction,
   ConnectXEngine,
@@ -24,16 +25,18 @@ const KEY_MAP = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
-class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
+class ConnectXConsole<T extends StringRenderable> {
+  private readonly game: ConnectXGame<T>;
+  private readonly state: ConnectXState<T>;
   private readonly engine: ConnectXEngine<T>;
   private readonly adapter: ConnectXTimeAdapter<T>;
   private readonly timeline: ConnectXTimeline<T>;
   private readonly recorder: ConnectXStateRecorder<T>;
 
   constructor(settings: ConnectXSettings<T>) {
-    super(settings);
-
-    this.engine = new ConnectXEngine(this);
+    this.game = new ConnectXGame(settings);
+    this.state = this.game.state;
+    this.engine = new ConnectXEngine(this.game);
     this.adapter = new ConnectXTimeAdapter(this.state);
     this.timeline = this.adapter.createTimeline();
     this.recorder = this.adapter.createStateRecorder(this.timeline);
@@ -53,14 +56,14 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
       // time travel (← / →)
       if (key === LEFT_ARROW) {
         if (this.timeline.stepBackward()) {
-          const snapshot = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.adapter.applyCurrentSnapshot(this.timeline);
           this.render();
         }
         return;
       }
       if (key === RIGHT_ARROW) {
         if (this.timeline.stepForward()) {
-          const snapshot = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.adapter.applyCurrentSnapshot(this.timeline);
           this.render();
         }
         return;
@@ -81,20 +84,20 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   }
 
   private processAction(action: ConnectXAction): boolean {
+    if (this.state.outcome && action.type !== "quit") return false;
+
     switch (action.type) {
       case "quit": {
         this.engine.dispatch(action);
         return true;
       }
       case "dropPiece": {
-        // only piece drops are recorded on the timeline
-        this.recorder.commit(this.state);
         this.engine.dispatch(action);
-        this.recorder.push(this.state);
+        this.recorder.record(this.state); // only piece drops are recorded on the timeline
         return false;
       }
-      // moveLeft / moveRight (no timeline record)
-      default: {
+      case "moveLeft":
+      case "moveRight": {
         this.engine.dispatch(action);
         return false;
       }
@@ -102,19 +105,19 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   }
 
   private render(snapshot?: ConnectXSnapshot<T>) {
-    const snapshotFinal = snapshot ?? this.adapter.nextSnapshot(this.timeline);
-    if (!snapshotFinal) return;
+    const currentSnapshot = snapshot ?? this.adapter.nextSnapshot(this.timeline);
+    if (!currentSnapshot) return;
 
     console.clear();
 
-    const { cells, outcome } = snapshotFinal;
     const { board, boardCursor, playerCursor } = this.state;
+    const { cells, outcome } = currentSnapshot;
 
     // cursors: always read from *live* state
     const boardCursorIndex = boardCursor.values[0];
     const playerCursorIndex = playerCursor.values[0];
     const [width, height] = board.bounds;
-    const token = this.getPlayerToken(playerCursorIndex);
+    const token = this.game.getPlayerToken(playerCursorIndex);
 
     let output = `${token}'s Turn\n\n`;
 
@@ -134,9 +137,7 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
     output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
-    if (outcome) {
-      output += `Outcome: ${token} ${outcome}\n`;
-    }
+    if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 
     console.log(output);
   }
@@ -144,7 +145,6 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
   private exit() {
     process.stdin.setRawMode(false);
     process.stdin.pause();
-    console.log(`Game over: ${this.outcomeMessage}`);
     process.exit(0);
   }
 }

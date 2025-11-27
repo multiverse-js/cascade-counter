@@ -4,6 +4,7 @@ export interface StateRecorderOptions<State, Snapshot, Patch> {
   timeline: Timeline<Snapshot, Patch>;
   snapshot: (state: State) => Snapshot;
   patch: (from: Snapshot, to: Snapshot) => Patch;
+  isEmptyPatch?: (patch: Patch) => boolean;
 }
 
 /**
@@ -12,41 +13,36 @@ export interface StateRecorderOptions<State, Snapshot, Patch> {
  * - push(state): compute patch vs committed snapshot and push into Timeline
  */
 export class StateRecorder<State, Snapshot, Patch> {
-  private timeline: Timeline<Snapshot, Patch>;
-  private snapshotFn: (state: State) => Snapshot;
-  private patchFn: (from: Snapshot, to: Snapshot) => Patch;
-  private committedSnapshot?: Snapshot;
+  private readonly timeline: Timeline<Snapshot, Patch>;
+  private readonly snapshot: (state: State) => Snapshot;
+  private readonly patch: (from: Snapshot, to: Snapshot) => Patch;
+  private readonly isEmptyPatch?: (patch: Patch) => boolean;
+
+  private lastSnapshot?: Snapshot;
 
   constructor(options: StateRecorderOptions<State, Snapshot, Patch>) {
     this.timeline = options.timeline;
-    this.snapshotFn = options.snapshot;
-    this.patchFn = options.patch;
+    this.snapshot = options.snapshot;
+    this.patch = options.patch;
+    this.isEmptyPatch = options.isEmptyPatch;
   }
 
-  /** Seed the timeline with the initial full snapshot. */
-  pushInitial(state: State): number {
-    const snap = this.snapshotFn(state);
-    this.committedSnapshot = snap;
-    return this.timeline.pushFull(snap);
-  }
+  record(state: State, message?: string): number {
+    const snap = this.snapshot(state);
 
-  commit(state: State): void {
-    // capture baseline snapshot before a batch of changes
-    this.committedSnapshot = this.snapshotFn(state);
-  }
+    if (this.lastSnapshot) {
+      const patch = this.patch(this.lastSnapshot, snap);
 
-  push(state: State, label?: string): number {
-    const snap = this.snapshotFn(state);
-    let index;
-
-    if (this.committedSnapshot) {
-      const patch = this.patchFn(this.committedSnapshot, snap);
-      index = this.timeline.pushPatch(patch, label);
-    } else {
-      index = this.timeline.pushFull(snap, label);
+      if (this.isEmptyPatch && this.isEmptyPatch(patch)) {
+        return this.timeline.index; // no-op, keep lastSnapshot as-is
+      }
+      const index = this.timeline.pushPatch(patch, message);
+      this.lastSnapshot = snap;
+      return index;
     }
-    this.committedSnapshot = snap;
 
+    const index = this.timeline.pushFull(snap, message); // initial record
+    this.lastSnapshot = snap;
     return index;
   }
 }

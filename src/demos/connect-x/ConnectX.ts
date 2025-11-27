@@ -99,10 +99,15 @@ export class ConnectXTimeAdapter<T> {
     const recorder = new StateRecorder<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>({
       timeline,
       snapshot: () => this.takeSnapshot(),
-      patch: (from, to) => this.createPatch(from, to)
+      patch: (from, to) => this.createPatch(from, to),
+      isEmptyPatch: (patch) =>
+        patch.cells.length === 0 &&
+        patch.boardCursorIndex === undefined &&
+        patch.playerCursorIndex === undefined &&
+        patch.outcome === undefined
     });
 
-    recorder.pushInitial(this.state);
+    recorder.record(this.state);
     return recorder;
   }
 
