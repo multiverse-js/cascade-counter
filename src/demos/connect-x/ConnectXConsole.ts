@@ -27,15 +27,15 @@ const KEY_MAP = createKeyMap<ConnectXAction>({
 
 class ConnectXConsole<T extends StringRenderable> {
   private readonly game: ConnectXGame<T>;
-  private readonly state: ConnectXState<T>;
   private readonly engine: ConnectXEngine<T>;
+  private readonly state: ConnectXState<T>;
   private readonly history: ConnectXStateHistory<T>;
   private readonly timeline: ConnectXTimeline<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
-    this.state = this.game.state;
     this.engine = new ConnectXEngine(this.game);
+    this.state = this.game.state;
     this.history = createConnectXStateHistory(this.state);
     this.timeline = this.history.timeline;
   }
