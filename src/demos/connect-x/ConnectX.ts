@@ -42,7 +42,6 @@ export interface ConnectXSnapshot<T> {
   cells: T[];
   boardCursorIndex: number;
   playerCursorIndex: number;
-  lastMove?: Coord;
   outcome?: ConnectXOutcome;
 }
 
@@ -51,7 +50,6 @@ export interface ConnectXPatch<T> {
   cells: Patch2D<T>[];
   boardCursorIndex?: number;
   playerCursorIndex?: number;
-  lastMove?: Coord;
   outcome?: ConnectXOutcome;
 }
 
@@ -109,13 +107,12 @@ export class ConnectXTimeAdapter<T> {
   }
 
   takeSnapshot(): ConnectXSnapshot<T> {
-    const { board, boardCursor, playerCursor, lastMove, outcome } = this.state;
+    const { board, boardCursor, playerCursor, outcome } = this.state;
 
     return {
       cells: board.toArray(),
       boardCursorIndex: boardCursor.values[0],
       playerCursorIndex: playerCursor.values[0],
-      lastMove,
       outcome
     };
   }
@@ -142,9 +139,6 @@ export class ConnectXTimeAdapter<T> {
     if (prev.playerCursorIndex !== next.playerCursorIndex) {
       patch.playerCursorIndex = next.playerCursorIndex;
     }
-    if (prev.lastMove !== next.lastMove) {
-      patch.lastMove = next.lastMove;
-    }
     if (prev.outcome !== next.outcome) {
       patch.outcome = next.outcome;
     }
@@ -156,7 +150,6 @@ export class ConnectXTimeAdapter<T> {
       cells: base.cells.slice(),
       boardCursorIndex: base.boardCursorIndex,
       playerCursorIndex: base.playerCursorIndex,
-      lastMove: base.lastMove,
       outcome: base.outcome
     };
 
@@ -170,9 +163,6 @@ export class ConnectXTimeAdapter<T> {
     if (patch.playerCursorIndex !== undefined) {
       next.playerCursorIndex = patch.playerCursorIndex;
     }
-    if (patch.lastMove !== undefined) {
-      next.lastMove = patch.lastMove;
-    }
     if (patch.outcome !== undefined) {
       next.outcome = patch.outcome;
     }
@@ -182,12 +172,11 @@ export class ConnectXTimeAdapter<T> {
   /** Apply a snapshot into the live ConnectXState */
   applySnapshot(snapshot: ConnectXSnapshot<T>): void {
     const { board, boardCursor, playerCursor } = this.state;
-    const { cells, boardCursorIndex, playerCursorIndex, lastMove, outcome } = snapshot;
+    const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
 
     board.loadFromArray(cells);
     boardCursor.setAt(0, boardCursorIndex);
     playerCursor.setAt(0, playerCursorIndex);
-    this.state.lastMove = lastMove;
     this.state.outcome = outcome;
   }
 }

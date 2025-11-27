@@ -50,7 +50,6 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
         this.exit();
         return;
       }
-
       // time travel (← / →)
       if (key === LEFT_ARROW) {
         if (this.timeline.stepBackward()) {
@@ -59,7 +58,6 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
         }
         return;
       }
-
       if (key === RIGHT_ARROW) {
         if (this.timeline.stepForward()) {
           const snapshot = this.adapter.applyCurrentSnapshot(this.timeline);
