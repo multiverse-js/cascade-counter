@@ -6,7 +6,7 @@ import { Coord } from "../../space/types";
 import { dropAlongAxis, findLine } from "../../space/Space";
 import { Vector2 } from "../../space/Vector2";
 
-import { DenseWorld } from "../../reality/DenseWorld";
+import { DenseGrid } from "../../reality/DenseGrid";
 
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
@@ -30,7 +30,7 @@ export interface ConnectXSettings<T> {
 }
 
 export interface ConnectXState<T> {
-  readonly board: DenseWorld<T>;
+  readonly board: DenseGrid<T>;
   readonly boardCursor: CascadeCounter;
   readonly playerCursor: CascadeCounter;
   lastMove?: Coord;
@@ -194,7 +194,7 @@ export class ConnectXGame<T extends StringRenderable> {
   constructor(settings: ConnectXSettings<T>) {
     this.settings = settings;
     this.state = {
-      board: new DenseWorld<T>({
+      board: new DenseGrid<T>({
         bounds: [settings.boardWidth, settings.boardHeight],
         strictBounds: true,
         defaultValue: settings.emptyToken

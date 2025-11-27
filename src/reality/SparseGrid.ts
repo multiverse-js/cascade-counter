@@ -1,16 +1,16 @@
-import type { Coord, WorldOptions } from "./types";
-import { BaseWorld } from "./World";
+import type { Coord, GridOptions } from "./types";
+import { BaseGrid } from "./Grid";
 
-export class SparseWorld<T> extends BaseWorld<T> {
+export class SparseGrid<T> extends BaseGrid<T> {
   private readonly cells: Map<string, T>;
 
-  constructor(options: WorldOptions<T>) {
+  constructor(options: GridOptions<T>) {
     super({ ...options, backend: "sparse" });
     this.cells = new Map<string, T>();
   }
 
   private keyFromCoord(coord: Coord): string {
-    this.assertInBounds(coord, "SparseWorld.keyFromCoord");
+    this.assertInBounds(coord, "SparseGrid.keyFromCoord");
     // Simple join; you can optimize later if needed
     return coord.join(",");
   }

@@ -1,12 +1,12 @@
 import { StringRenderable } from "../soul/types";
-import type { Coord, WorldOptions } from "./types";
-import { BaseWorld } from "./World";
+import type { Coord, GridOptions } from "./types";
+import { BaseGrid } from "./Grid";
 
-export class DenseWorld<T> extends BaseWorld<T> {
+export class DenseGrid<T> extends BaseGrid<T> {
   private cells: T[];
   readonly defaultValue: T | undefined;
 
-  constructor(options: WorldOptions<T>) {
+  constructor(options: GridOptions<T>) {
     super({ ...options, backend: "dense" });
 
     this.cells = new Array<T>(this.size);
@@ -78,45 +78,60 @@ export class DenseWorld<T> extends BaseWorld<T> {
       this.cells[i] = cells[i]!;
     }
   }
-}
 
-export function gridToString<T extends StringRenderable>(
-  cells: ReadonlyArray<T>,
-  width: number,
-  height: number,
-  options: {
-    defaultValue?: T;
-    cellPadding?: string;
-    rowSeparator?: string;
-  } = {}
-): string {
-  const {
-    defaultValue,
-    cellPadding = "",
-    rowSeparator = "\n",
-  } = options;
+  static gridToString<T extends StringRenderable>(
+    cells: ReadonlyArray<T>,
+    columns: number,
+    rows: number,
+    options: {
+      defaultValue?: T;
+      cellPadding?: string;
+      rowSeparator?: string;
+    } = {}
+  ): string {
+    const {
+      defaultValue,
+      cellPadding = "",
+      rowSeparator = "\n",
+    } = options;
 
-  const expected = width * height;
+    const expected = columns * rows;
 
-  if (cells.length !== expected) {
-    throw new Error(
-      `gridToString(): expected '${expected}' cells in the grid, got ${cells.length}`
-    );
-  }
-
-  let out = "";
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const raw = cells[y * width + x];
-
-      if (defaultValue !== undefined && raw === defaultValue) {
-        out += ` ${String(defaultValue)} `;
-      } else {
-        out += `${String(raw)}${cellPadding}`;
-      }
+    if (cells.length !== expected) {
+      throw new Error(
+        `gridToString(): expected '${expected}' cells in the grid, got ${cells.length}`
+      );
     }
-    out += rowSeparator;
+
+    let out = "";
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < columns; x++) {
+        const raw = cells[y * columns + x];
+
+        if (defaultValue !== undefined && raw === defaultValue) {
+          out += ` ${String(defaultValue)} `;
+        } else {
+          out += `${String(raw)}${cellPadding}`;
+        }
+      }
+      out += rowSeparator;
+    }
+
+    return out;
   }
 
-  return out;
+  gridToString(
+    this: DenseGrid<StringRenderable>,
+    options: {
+      cellPadding?: string;
+      rowSeparator?: string;
+    } = {}
+  ): string {
+    const [columns, rows] = this.bounds;
+
+    return DenseGrid.gridToString(this.cells, columns, rows, {
+      defaultValue: this.defaultValue,
+      ...options
+    });
+  }
 }

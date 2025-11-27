@@ -12,7 +12,7 @@ import {
 
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
-import { gridToString } from "../../reality/DenseWorld";
+import { DenseGrid } from "../../reality/DenseGrid";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -56,15 +56,15 @@ class ConnectXConsole<T extends StringRenderable> {
       // time travel (← / →)
       if (key === LEFT_ARROW) {
         if (this.timeline.stepBackward()) {
-          this.adapter.applyCurrentSnapshot(this.timeline);
-          this.render();
+          const snap = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.render(snap);
         }
         return;
       }
       if (key === RIGHT_ARROW) {
         if (this.timeline.stepForward()) {
-          this.adapter.applyCurrentSnapshot(this.timeline);
-          this.render();
+          const snap = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.render(snap);
         }
         return;
       }
@@ -128,7 +128,7 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "\n";
 
     // board
-    output += gridToString(cells, width, height, {
+    output += DenseGrid.gridToString(cells, width, height, {
       defaultValue: board.defaultValue,
       cellPadding: " "
     }) + "\n";

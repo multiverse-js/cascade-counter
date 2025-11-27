@@ -62,8 +62,8 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Push a full snapshot and move cursor to it. */
-  pushFull(snapshot: Snapshot, label?: string, truncate: boolean = true): number {
-    if (truncate) this.truncateFuture();
+  pushFull(snapshot: Snapshot, label?: string, truncateFuture: boolean = true): number {
+    if (truncateFuture) this.truncateFuture();
 
     const index = this.entries.length;
     const entry: TimelineEntry<Snapshot, Patch> = {
@@ -92,6 +92,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     if (!this.config.applyPatch) {
       throw new Error("Timeline.pushPatch() requires config.applyPatch.");
     }
+
     if (truncate) this.truncateFuture();
 
     const index = this.entries.length;
@@ -113,14 +114,17 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       patch,
       timestamp: Date.now(),
     };
-    if (label) entry.label = label;
+
+    if (label) {
+      entry.label = label;
+    }
     if (shouldStoreSnapshot) {
       entry.snapshot = nextSnapshot;
     }
-
     this.entries.push(entry);
     this.latestSnapshot = nextSnapshot;
     this.cursor = index;
+
     return index;
   }
 
@@ -136,8 +140,10 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       throw new Error("bad index");
     }
     const entry = this.entries[index];
-    if (entry.snapshot) return entry.snapshot;
 
+    if (entry.snapshot) {
+      return entry.snapshot;
+    }
     if (this.config.mode === "full") {
       return undefined;
     }
@@ -152,8 +158,9 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     while (baseIndex >= 0 && !this.entries[baseIndex].snapshot) {
       baseIndex--;
     }
-    if (baseIndex < 0) return undefined;
-
+    if (baseIndex < 0) {
+      return undefined;
+    }
     let currentSnapshot = this.entries[baseIndex].snapshot as Snapshot;
 
     for (let i = baseIndex + 1; i <= index; i++) {
@@ -196,25 +203,16 @@ export class Timeline<Snapshot, Patch = Snapshot> {
 
   // Keep entries up to current index; drop everything after
   private truncateFuture(): void {
-    if (this.index < this.entries.length - 1) {
-      // Keep entries up to current cursor
-      this.entries.length = this.index + 1;
+    if (this.cursor < this.entries.length - 1) {
+      this.entries.length = this.cursor + 1;
 
       if (this.entries.length === 0) {
         this.latestSnapshot = undefined;
         return;
       }
 
-      // Recompute latestSnapshot from the new last entry
       const lastIndex = this.entries.length - 1;
-      const lastEntry = this.entries[lastIndex];
-
-      if (lastEntry.snapshot) {
-        this.latestSnapshot = lastEntry.snapshot;
-      } else {
-        // Patch mode: reconstruct last snapshot from history
-        this.latestSnapshot = this.getSnapshotAt(lastIndex)!;
-      }
+      this.latestSnapshot = this.getSnapshotAt(lastIndex)!;
     }
   }
 }

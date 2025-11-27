@@ -1,21 +1,21 @@
 import type {
   Coord,
   Bounds,
-  WorldOptions
+  GridOptions
 } from "./types";
 
 /**
  * Base class providing shared indexing logic & bounds checks.
  * Concrete subclasses only need to implement storage operations.
  */
-export abstract class BaseWorld<T> {
+export abstract class BaseGrid<T> {
   readonly dimensions: number;
   readonly bounds: Bounds;
   readonly size: number;
   protected readonly strides: ReadonlyArray<number>;
   protected readonly strictBounds: boolean;
 
-  constructor(options: WorldOptions<T>) {
+  constructor(options: GridOptions<T>) {
     const {
       bounds,
       strictBounds = true,
