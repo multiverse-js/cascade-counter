@@ -32,12 +32,12 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Are we currently at the most recent entry? */
-  isAtLatest(): boolean {
+  isAtPresent(): boolean {
     return this.cursor === this.entries.length - 1;
   }
 
   /** Move cursor to the latest entry, if any. */
-  moveToLast(): boolean {
+  moveToPresent(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = this.entries.length - 1;
     return true;
@@ -170,7 +170,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   getNextSnapshot(takeSnapshot: () => Snapshot): Snapshot | undefined {
-    if (this.isAtLatest()) {
+    if (this.isAtPresent()) {
       return takeSnapshot();
     }
     const snapshot = this.getCurrentSnapshot();

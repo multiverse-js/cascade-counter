@@ -70,45 +70,45 @@ export class DenseWorld<T> extends BaseWorld<T> {
   toArray(): T[] {
     return this.data.slice();
   }
+}
 
-  static toStringFromData2D<T extends StringRenderable>(
-    cells: ReadonlyArray<T>,
-    width: number,
-    height: number,
-    options: {
-      defaultValue?: T;
-      cellPadding?: string;
-      rowSeparator?: string;
-    } = {}
-  ): string {
-    const {
-      defaultValue,
-      cellPadding = "",
-      rowSeparator = "\n",
-    } = options;
+export function gridToString<T extends StringRenderable>(
+  cells: ReadonlyArray<T>,
+  width: number,
+  height: number,
+  options: {
+    defaultValue?: T;
+    cellPadding?: string;
+    rowSeparator?: string;
+  } = {}
+): string {
+  const {
+    defaultValue,
+    cellPadding = "",
+    rowSeparator = "\n",
+  } = options;
 
-    const expected = width * height;
+  const expected = width * height;
 
-    if (cells.length !== expected) {
-      throw new Error(
-        `DenseWorld.toStringFromData: expected ${expected} cells for 2D world, got ${cells.length}`
-      );
-    }
-
-    let out = "";
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const raw = cells[y * width + x];
-
-        if (defaultValue !== undefined && raw === defaultValue) {
-          out += ` ${String(defaultValue)} `;
-        } else {
-          out += `${String(raw)}${cellPadding}`;
-        }
-      }
-      out += rowSeparator;
-    }
-
-    return out;
+  if (cells.length !== expected) {
+    throw new Error(
+      `DenseWorld.toStringFromData: expected ${expected} cells for 2D world, got ${cells.length}`
+    );
   }
+
+  let out = "";
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const raw = cells[y * width + x];
+
+      if (defaultValue !== undefined && raw === defaultValue) {
+        out += ` ${String(defaultValue)} `;
+      } else {
+        out += `${String(raw)}${cellPadding}`;
+      }
+    }
+    out += rowSeparator;
+  }
+
+  return out;
 }

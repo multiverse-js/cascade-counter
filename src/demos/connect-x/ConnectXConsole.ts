@@ -10,7 +10,7 @@ import {
 
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
-import { DenseWorld } from "../../reality/DenseWorld";
+import { gridToString } from "../../reality/DenseWorld";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -56,7 +56,7 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
       }
       const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
-      if (!this.timeline.isAtLatest()) this.timeline.moveToLast();
+      if (!this.timeline.isAtPresent()) this.timeline.moveToPresent();
 
       const quit = this.processAction(action);
       this.render();
@@ -97,7 +97,7 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     for (let i = 0; i < width; i++) output += boardCursorIndex === i ? " ↓ " : "   ";
     output += "\n";
 
-    output += DenseWorld.toStringFromData2D(
+    output += gridToString(
       cells, width, height,
       {
         defaultValue: this.state.board.defaultValue,
@@ -121,9 +121,9 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 21,
-  boardHeight: 18,
-  playerTokens: ["🔴", "🟡", "🟣"],
+  boardWidth: 7,
+  boardHeight: 6,
+  playerTokens: ["🔴", "🟡"],
   emptyToken: ".",
   winToken: "🟢",
   winLength: 4
