@@ -46,7 +46,7 @@ export type ConnectXSnapshot<T> = {
 };
 
 // Difference between two snapshots
-export interface ConnectXPatch<T> {
+export type ConnectXPatch<T> = {
   readonly cells: ReadonlyArray<Patch2D<T>>;
   readonly boardCursorIndex?: number;
   readonly playerCursorIndex?: number;
