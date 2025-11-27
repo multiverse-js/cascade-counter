@@ -5,7 +5,7 @@ export interface Action<T extends string = string> {
 }
 
 // A reducer transforms a state given an action (pure function)
-export type Reducer<S, A extends Action = Action> = (
+export type ActionReducer<S, A extends Action = Action> = (
   state: S,
   action: A
 ) => S;

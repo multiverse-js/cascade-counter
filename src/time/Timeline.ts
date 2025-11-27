@@ -1,3 +1,5 @@
+import { TimelineMode } from "./types";
+
 export interface TimelineEntry<Snapshot, Patch = Snapshot> {
   index: number;
   snapshot?: Snapshot;  // full snapshot (for checkpoints / caching)
@@ -7,7 +9,7 @@ export interface TimelineEntry<Snapshot, Patch = Snapshot> {
 }
 
 export interface TimelineConfig<Snapshot, Patch = Snapshot> {
-  mode: "full" | "patch" | "hybrid";
+  mode: TimelineMode;
   checkpointInterval?: number;
   applyPatch?: (base: Snapshot, patch: Patch) => Snapshot;
 }
@@ -176,32 +178,12 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return currentSnapshot;
   }
 
-  /** Convenience: snapshot at current cursor. */
   getCurrentSnapshot(): Snapshot | undefined {
     if (this.cursor < 0) throw new Error("bad index");
     return this.getSnapshotAt(this.cursor);
   }
 
-  nextSnapshot(takeSnapshot: () => Snapshot): Snapshot | undefined {
-    if (this.isAtPresent()) {
-      return takeSnapshot();
-    }
-    const snapshot = this.getCurrentSnapshot();
-    if (!snapshot) {
-      return takeSnapshot();
-    }
-    return snapshot;
-  }
-
-  applyCurrentSnapshot(applySnapshotToState: (snap: Snapshot) => void): Snapshot | undefined {
-    const snapshot = this.getCurrentSnapshot();
-    if (snapshot) {
-      applySnapshotToState(snapshot);
-    }
-    return snapshot;
-  }
-
-  // Keep entries up to current index; drop everything after
+  /*8 Keep entries up to current index; drop everything after */
   private truncateFuture(): void {
     if (this.cursor < this.entries.length - 1) {
       this.entries.length = this.cursor + 1;

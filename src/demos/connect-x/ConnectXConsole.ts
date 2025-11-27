@@ -4,10 +4,9 @@ import {
   ConnectXSettings,
   ConnectXAction,
   ConnectXEngine,
-  ConnectXTimeAdapter,
-  ConnectXTimeline,
-  ConnectXStateRecorder,
-  ConnectXSnapshot
+  ConnectXSnapshot,
+  ConnectXStateHistory,
+  createConnectXStateHistory
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
@@ -29,17 +28,13 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly game: ConnectXGame<T>;
   private readonly state: ConnectXState<T>;
   private readonly engine: ConnectXEngine<T>;
-  private readonly adapter: ConnectXTimeAdapter<T>;
-  private readonly timeline: ConnectXTimeline<T>;
-  private readonly recorder: ConnectXStateRecorder<T>;
+  private readonly history: ConnectXStateHistory<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.state = this.game.state;
     this.engine = new ConnectXEngine(this.game);
-    this.adapter = new ConnectXTimeAdapter(this.state);
-    this.timeline = this.adapter.createTimeline();
-    this.recorder = this.adapter.createStateRecorder(this.timeline);
+    this.history = createConnectXStateHistory(this.state);
   }
 
   start() {
@@ -55,15 +50,15 @@ class ConnectXConsole<T extends StringRenderable> {
       }
       // time travel (← / →)
       if (key === LEFT_ARROW) {
-        if (this.timeline.stepBackward()) {
-          const snap = this.adapter.applyCurrentSnapshot(this.timeline);
+        if (this.history.timeline.stepBackward()) {
+          const snap = this.history.applySnapshot();
           this.render(snap);
         }
         return;
       }
       if (key === RIGHT_ARROW) {
-        if (this.timeline.stepForward()) {
-          const snap = this.adapter.applyCurrentSnapshot(this.timeline);
+        if (this.history.timeline.stepForward()) {
+          const snap = this.history.applySnapshot();
           this.render(snap);
         }
         return;
@@ -93,7 +88,7 @@ class ConnectXConsole<T extends StringRenderable> {
       }
       case "dropPiece": {
         this.engine.dispatch(action);
-        this.recorder.record(this.state); // only piece drops are recorded on the timeline
+        this.history.recorder.record(this.state); // only piece drops are recorded on the timeline
         return false;
       }
       case "moveLeft":
@@ -105,7 +100,7 @@ class ConnectXConsole<T extends StringRenderable> {
   }
 
   private render(snapshot?: ConnectXSnapshot<T>) {
-    const currentSnapshot = snapshot ?? this.adapter.nextSnapshot(this.timeline);
+    const currentSnapshot = snapshot ?? this.history.resolveSnapshot();
     if (!currentSnapshot) return;
 
     console.clear();
@@ -135,7 +130,7 @@ class ConnectXConsole<T extends StringRenderable> {
 
     // HUD
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
-    output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
+    output += `Move: ${this.history.timeline.index + 1}/${this.history.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 

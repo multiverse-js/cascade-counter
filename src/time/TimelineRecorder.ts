@@ -1,6 +1,6 @@
 import { Timeline } from "./Timeline";
 
-export interface StateRecorderOptions<State, Snapshot, Patch> {
+export interface TimelineRecorderOptions<State, Snapshot, Patch> {
   timeline: Timeline<Snapshot, Patch>;
   snapshot: (state: State) => Snapshot;
   patch: (from: Snapshot, to: Snapshot) => Patch;
@@ -8,18 +8,18 @@ export interface StateRecorderOptions<State, Snapshot, Patch> {
 }
 
 /**
- * StateRecorder: ergonomic layer on top of Timeline
+ * TimelineRecorder: ergonomic layer on top of Timeline
  * - commit(state): capture baseline snapshot before a batch of changes
  * - push(state): compute patch vs committed snapshot and push into Timeline
  */
-export class StateRecorder<State, Snapshot, Patch> {
+export class TimelineRecorder<State, Snapshot, Patch> {
   readonly timeline: Timeline<Snapshot, Patch>;
 
   private readonly snapshot: (state: State) => Snapshot;
   private readonly patch: (from: Snapshot, to: Snapshot) => Patch;
   private readonly isEmptyPatch?: (patch: Patch) => boolean;
 
-  constructor(options: StateRecorderOptions<State, Snapshot, Patch>) {
+  constructor(options: TimelineRecorderOptions<State, Snapshot, Patch>) {
     this.timeline = options.timeline;
     this.snapshot = options.snapshot;
     this.patch = options.patch;

@@ -1,17 +1,17 @@
 import type {
   Action,
-  Reducer,
+  ActionReducer,
+  ActionReducerOptions,
   ActionHandlers,
   ActionMap,
-  ActionReducerOptions
 } from "./types";
 
 export class Engine<Target, State, A extends Action> {
   protected target: Target;
   protected state: State;
-  protected readonly reducer: Reducer<Target, A>;
+  protected readonly reducer: ActionReducer<Target, A>;
 
-  constructor(target: Target, state: State, reducer: Reducer<Target, A>) {
+  constructor(target: Target, state: State, reducer: ActionReducer<Target, A>) {
     this.target = target;
     this.state = state;
     this.reducer = reducer;
@@ -26,7 +26,7 @@ export class Engine<Target, State, A extends Action> {
 export function createActionReducer<S, A extends Action>(
   handlers: ActionHandlers<S, A>,
   options?: ActionReducerOptions<S, A>
-): Reducer<S, A> {
+): ActionReducer<S, A> {
   return (state: S, action: A): S => {
     const handler = handlers[action.type];
     if (!handler) return state;
