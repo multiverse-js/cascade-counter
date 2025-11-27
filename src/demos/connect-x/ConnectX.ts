@@ -14,7 +14,7 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 import { Patch2D } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
-import { computePatch2D } from "../../time/CellPatch";
+import { applyGridPatch2D, computeGridPatch2D, computeScalarPatch } from "../../time/Patch";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -107,29 +107,25 @@ export function createConnectXStateHistory<T>(
         const [width, height] = state.board.bounds;
 
         return {
-          cells: computePatch2D(prev.cells, next.cells, width, height),
-          boardCursorIndex: prev.boardCursorIndex !== next.boardCursorIndex
-            ? next.boardCursorIndex
-            : undefined,
-          playerCursorIndex: prev.playerCursorIndex !== next.playerCursorIndex
-            ? next.playerCursorIndex
-            : undefined,
-          outcome: prev.outcome !== next.outcome
-            ? next.outcome
-            : undefined
+          cells: computeGridPatch2D(prev.cells, next.cells, width, height),
+
+          boardCursorIndex: computeScalarPatch(
+            prev.boardCursorIndex,
+            next.boardCursorIndex
+          ),
+
+          playerCursorIndex: computeScalarPatch(
+            prev.playerCursorIndex,
+            next.playerCursorIndex
+          ),
+
+          outcome: computeScalarPatch(prev.outcome, next.outcome)
         };
       },
 
       applyPatch: (base, patch) => {
-        const cells: Array<T> = base.cells.slice();
-        const [width] = state.board.bounds;
-
-        for (const cell of patch.cells) {
-          const index = cell.y * width + cell.x;
-          cells[index] = cell.value;
-        }
         return {
-          cells,
+          cells: applyGridPatch2D(base.cells, patch.cells, state.board.bounds[0]),
           boardCursorIndex: patch.boardCursorIndex ?? base.boardCursorIndex,
           playerCursorIndex: patch.playerCursorIndex ?? base.playerCursorIndex,
           outcome: patch.outcome ?? base.outcome

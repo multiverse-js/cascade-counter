@@ -1,6 +1,6 @@
 import { Patch2D, Patch3D } from "./types";
 
-export function computePatch2D<T>(
+export function computeGridPatch2D<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,
@@ -36,7 +36,7 @@ export function computePatch2D<T>(
   return patches;
 }
 
-export function computePatch3D<T>(
+export function computeGridPatch3D<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,
@@ -76,4 +76,50 @@ export function computePatch3D<T>(
   }
 
   return patches;
+}
+
+export function computeScalarPatch<T>(prev: T, next: T): T | undefined {
+  return Object.is(prev, next) ? undefined : next;
+}
+
+export function applyGridPatch2D<T>(
+  baseCells: ReadonlyArray<T>,
+  cellsPatch: ReadonlyArray<Patch2D<T>>,
+  width: number
+): ReadonlyArray<T> {
+  if (cellsPatch.length === 0) {
+    // No changes: you can safely reuse the base reference.
+    return baseCells;
+  }
+
+  const cells = baseCells.slice();
+
+  for (const cell of cellsPatch) {
+    const index = cell.y * width + cell.x;
+    cells[index] = cell.value;
+  }
+
+  return cells;
+}
+
+export function applyGridPatch3D<T>(
+  baseCells: ReadonlyArray<T>,
+  cellsPatch: ReadonlyArray<Patch3D<T>>,
+  width: number,
+  height: number
+): ReadonlyArray<T> {
+  if (cellsPatch.length === 0) {
+    // No changes: you can safely reuse the base reference.
+    return baseCells;
+  }
+
+  const cells = baseCells.slice();
+  const layerSize = width * height;
+
+  for (const cell of cellsPatch) {
+    const index = cell.z * layerSize + cell.y * width + cell.x;
+    cells[index] = cell.value;
+  }
+
+  return cells;
 }
