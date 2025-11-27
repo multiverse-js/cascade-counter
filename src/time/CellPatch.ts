@@ -1,6 +1,6 @@
 import { Patch2D, Patch3D } from "./types";
 
-export function patch2D<T>(
+export function computePatch2D<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,
@@ -36,7 +36,7 @@ export function patch2D<T>(
   return patches;
 }
 
-export function patch3D<T>(
+export function computePatch3D<T>(
   prev: ReadonlyArray<T>,
   next: ReadonlyArray<T>,
   width: number,

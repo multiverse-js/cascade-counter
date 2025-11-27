@@ -14,7 +14,7 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 import { Patch2D } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
-import { patch2D } from "../../time/Patch";
+import { computePatch2D } from "../../time/CellPatch";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -106,7 +106,7 @@ export function createConnectXStateHistory<T>(
       createPatch: (prev, next) => {
         const [width, height] = state.board.bounds;
         const patch: ConnectXPatch<T> = {
-          cells: patch2D(prev.cells, next.cells, width, height)
+          cells: computePatch2D(prev.cells, next.cells, width, height)
         };
 
         if (prev.boardCursorIndex !== next.boardCursorIndex) {
