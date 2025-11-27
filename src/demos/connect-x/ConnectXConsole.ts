@@ -5,7 +5,8 @@ import {
   ConnectXEngine,
   ConnectXTimeAdapter,
   ConnectXTimeline,
-  ConnectXStateRecorder
+  ConnectXStateRecorder,
+  ConnectXSnapshot
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
@@ -44,70 +45,100 @@ class ConnectXConsole<T extends StringRenderable> extends ConnectXGame<T> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
-      switch (key) {
-        case CTRL_C:
-          this.exit();
-        case LEFT_ARROW:
-          if (this.timeline.stepBackward()) this.render();
-          return;
-        case RIGHT_ARROW:
-          if (this.timeline.stepForward()) this.render();
-          return;
+      // hard exit
+      if (key === CTRL_C) {
+        this.exit();
+        return;
       }
+
+      // time travel (← / →)
+      if (key === LEFT_ARROW) {
+        if (this.timeline.stepBackward()) {
+          const snapshot = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.render();
+        }
+        return;
+      }
+
+      if (key === RIGHT_ARROW) {
+        if (this.timeline.stepForward()) {
+          const snapshot = this.adapter.applyCurrentSnapshot(this.timeline);
+          this.render();
+        }
+        return;
+      }
+
+      // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
-      if (!this.timeline.isAtPresent()) this.timeline.moveToPresent();
 
       const quit = this.processAction(action);
-      this.render();
+
+      this.render(); // new frame
+
       if (quit) this.exit();
     });
 
-    this.render(); // render initial state
+    this.render(); // initial frame
   }
 
   private processAction(action: ConnectXAction): boolean {
     switch (action.type) {
-      case "quit":
+      case "quit": {
         this.engine.dispatch(action);
         return true;
-      case "dropPiece":
+      }
+      case "dropPiece": {
+        // only piece drops are recorded on the timeline
         this.recorder.commit(this.state);
         this.engine.dispatch(action);
         this.recorder.push(this.state);
         return false;
-      default:
+      }
+      // moveLeft / moveRight (no timeline record)
+      default: {
         this.engine.dispatch(action);
         return false;
+      }
     }
   }
 
-  private render() {
+  private render(snapshot?: ConnectXSnapshot<T>) {
+    const snapshotFinal = snapshot ?? this.adapter.nextSnapshot(this.timeline);
+    if (!snapshotFinal) return;
+
     console.clear();
 
-    const snapshot = this.adapter.nextSnapshot(this.timeline);
-    if (!snapshot) return;
+    const { cells, outcome } = snapshotFinal;
+    const { board, boardCursor, playerCursor } = this.state;
 
-    const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
-    const [width, height] = this.state.board.bounds;
+    // cursors: always read from *live* state
+    const boardCursorIndex = boardCursor.values[0];
+    const playerCursorIndex = playerCursor.values[0];
+    const [width, height] = board.bounds;
     const token = this.getPlayerToken(playerCursorIndex);
 
     let output = `${token}'s Turn\n\n`;
 
-    for (let i = 0; i < width; i++) output += boardCursorIndex === i ? " ↓ " : "   ";
+    // cursor row
+    for (let x = 0; x < width; x++) {
+      output += boardCursorIndex === x ? " ↓ " : "   ";
+    }
     output += "\n";
 
-    output += gridToString(
-      cells, width, height,
-      {
-        defaultValue: this.state.board.defaultValue,
-        cellPadding: " "
-      }
-    ) + "\n";
+    // board
+    output += gridToString(cells, width, height, {
+      defaultValue: board.defaultValue,
+      cellPadding: " "
+    }) + "\n";
+
+    // HUD
     output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
     output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
-    if (outcome) output += `Outcome: ${token} ${outcome}\n`;
+    if (outcome) {
+      output += `Outcome: ${token} ${outcome}\n`;
+    }
 
     console.log(output);
   }

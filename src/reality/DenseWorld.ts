@@ -67,6 +67,17 @@ export class DenseWorld<T> extends BaseWorld<T> {
   toArray(): T[] {
     return this.cells.slice();
   }
+
+  loadFromArray(cells: ReadonlyArray<T>): void {
+    if (cells.length !== this.size) {
+      throw new Error(
+        `DenseWorld.loadFromArray(): expected ${this.size} cells, got ${cells.length}`
+      );
+    }
+    for (let i = 0; i < this.size; i++) {
+      this.cells[i] = cells[i]!;
+    }
+  }
 }
 
 export function gridToString<T extends StringRenderable>(
@@ -89,7 +100,7 @@ export function gridToString<T extends StringRenderable>(
 
   if (cells.length !== expected) {
     throw new Error(
-      `DenseWorld.toStringFromData: expected ${expected} cells for 2D world, got ${cells.length}`
+      `gridToString(): expected '${expected}' cells in the grid, got ${cells.length}`
     );
   }
 

@@ -42,6 +42,7 @@ export interface ConnectXSnapshot<T> {
   cells: T[];
   boardCursorIndex: number;
   playerCursorIndex: number;
+  lastMove?: Coord;
   outcome?: ConnectXOutcome;
 }
 
@@ -50,6 +51,7 @@ export interface ConnectXPatch<T> {
   cells: Patch2D<T>[];
   boardCursorIndex?: number;
   playerCursorIndex?: number;
+  lastMove?: Coord;
   outcome?: ConnectXOutcome;
 }
 
@@ -97,7 +99,7 @@ export class ConnectXTimeAdapter<T> {
 
   createStateRecorder(timeline: ConnectXTimeline<T>): ConnectXStateRecorder<T> {
     const recorder = new StateRecorder<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>({
-      timeline: timeline,
+      timeline,
       snapshot: () => this.takeSnapshot(),
       patch: (from, to) => this.createPatch(from, to)
     });
@@ -107,18 +109,29 @@ export class ConnectXTimeAdapter<T> {
   }
 
   takeSnapshot(): ConnectXSnapshot<T> {
-    const { board, boardCursor, playerCursor, outcome } = this.state;
+    const { board, boardCursor, playerCursor, lastMove, outcome } = this.state;
 
     return {
       cells: board.toArray(),
       boardCursorIndex: boardCursor.values[0],
       playerCursorIndex: playerCursor.values[0],
+      lastMove,
       outcome
     };
   }
 
+  /** Live-or-timeline snapshot for rendering */
   nextSnapshot = (timeline: ConnectXTimeline<T>): ConnectXSnapshot<T> | undefined =>
-    timeline.getNextSnapshot(() => this.takeSnapshot());
+    timeline.nextSnapshot(() => this.takeSnapshot());
+
+  /** Apply snapshot at current cursor back into state, and return it */
+  applyCurrentSnapshot(timeline: ConnectXTimeline<T>): ConnectXSnapshot<T> | undefined {
+    const snapshot = timeline.getCurrentSnapshot();
+    if (snapshot) {
+      this.applySnapshot(snapshot);
+    }
+    return snapshot;
+  }
 
   createPatch(prev: ConnectXSnapshot<T>, next: ConnectXSnapshot<T>): ConnectXPatch<T> {
     const patch: ConnectXPatch<T> = {
@@ -128,6 +141,9 @@ export class ConnectXTimeAdapter<T> {
 
     if (prev.playerCursorIndex !== next.playerCursorIndex) {
       patch.playerCursorIndex = next.playerCursorIndex;
+    }
+    if (prev.lastMove !== next.lastMove) {
+      patch.lastMove = next.lastMove;
     }
     if (prev.outcome !== next.outcome) {
       patch.outcome = next.outcome;
@@ -140,6 +156,7 @@ export class ConnectXTimeAdapter<T> {
       cells: base.cells.slice(),
       boardCursorIndex: base.boardCursorIndex,
       playerCursorIndex: base.playerCursorIndex,
+      lastMove: base.lastMove,
       outcome: base.outcome
     };
 
@@ -153,10 +170,25 @@ export class ConnectXTimeAdapter<T> {
     if (patch.playerCursorIndex !== undefined) {
       next.playerCursorIndex = patch.playerCursorIndex;
     }
+    if (patch.lastMove !== undefined) {
+      next.lastMove = patch.lastMove;
+    }
     if (patch.outcome !== undefined) {
       next.outcome = patch.outcome;
     }
     return next;
+  }
+
+  /** Apply a snapshot into the live ConnectXState */
+  applySnapshot(snapshot: ConnectXSnapshot<T>): void {
+    const { board, boardCursor, playerCursor } = this.state;
+    const { cells, boardCursorIndex, playerCursorIndex, lastMove, outcome } = snapshot;
+
+    board.loadFromArray(cells);
+    boardCursor.setAt(0, boardCursorIndex);
+    playerCursor.setAt(0, playerCursorIndex);
+    this.state.lastMove = lastMove;
+    this.state.outcome = outcome;
   }
 }
 

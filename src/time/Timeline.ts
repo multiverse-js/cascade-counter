@@ -62,7 +62,9 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Push a full snapshot and move cursor to it. */
-  pushFull(snapshot: Snapshot, label?: string): number {
+  pushFull(snapshot: Snapshot, label?: string, truncate: boolean = true): number {
+    if (truncate) this.truncateFuture();
+
     const index = this.entries.length;
     const entry: TimelineEntry<Snapshot, Patch> = {
       index,
@@ -78,7 +80,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Push a patch and move cursor to it. */
-  pushPatch(patch: Patch, label?: string): number {
+  pushPatch(patch: Patch, label?: string, truncate: boolean = true): number {
     if (this.config.mode === "full") {
       throw new Error("Timeline.pushPatch() called in 'full' mode.");
     }
@@ -90,6 +92,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     if (!this.config.applyPatch) {
       throw new Error("Timeline.pushPatch() requires config.applyPatch.");
     }
+    if (truncate) this.truncateFuture();
 
     const index = this.entries.length;
     const nextSnapshot = this.config.applyPatch(this.latestSnapshot, patch);
@@ -122,13 +125,16 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   getEntry(index: number): TimelineEntry<Snapshot, Patch> {
-    if (index < 0 || index >= this.entries.length) throw new Error("bad index");
+    if (index < 0 || index >= this.entries.length) {
+      throw new Error("bad index");
+    }
     return this.entries[index];
   }
 
   getSnapshotAt(index: number): Snapshot | undefined {
-    if (index < 0 || index >= this.entries.length) throw new Error("bad index");
-
+    if (index < 0 || index >= this.entries.length) {
+      throw new Error("bad index");
+    }
     const entry = this.entries[index];
     if (entry.snapshot) return entry.snapshot;
 
@@ -169,7 +175,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.getSnapshotAt(this.cursor);
   }
 
-  getNextSnapshot(takeSnapshot: () => Snapshot): Snapshot | undefined {
+  nextSnapshot(takeSnapshot: () => Snapshot): Snapshot | undefined {
     if (this.isAtPresent()) {
       return takeSnapshot();
     }
@@ -178,5 +184,20 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       return takeSnapshot();
     }
     return snapshot;
+  }
+
+  applyCurrentSnapshot(applySnapshotToState: (snap: Snapshot) => void): Snapshot | undefined {
+    const snapshot = this.getCurrentSnapshot();
+    if (snapshot) {
+      applySnapshotToState(snapshot);
+    }
+    return snapshot;
+  }
+
+  // Keep entries up to current index; drop everything after
+  private truncateFuture(): void {
+    if (this.index < this.entries.length - 1) {
+      this.entries.length = this.index + 1;
+    }
   }
 }
