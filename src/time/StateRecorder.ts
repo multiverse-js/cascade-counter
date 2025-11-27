@@ -13,7 +13,8 @@ export interface StateRecorderOptions<State, Snapshot, Patch> {
  * - push(state): compute patch vs committed snapshot and push into Timeline
  */
 export class StateRecorder<State, Snapshot, Patch> {
-  private readonly timeline: Timeline<Snapshot, Patch>;
+  readonly timeline: Timeline<Snapshot, Patch>;
+
   private readonly snapshot: (state: State) => Snapshot;
   private readonly patch: (from: Snapshot, to: Snapshot) => Patch;
   private readonly isEmptyPatch?: (patch: Patch) => boolean;
