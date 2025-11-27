@@ -1,5 +1,12 @@
-import { StringRenderable } from "../soul/types";
-import type { Coord, GridOptions } from "./types";
+import type {
+  Coord,
+  GridOptions,
+  GridPatch2D,
+  GridPatch3D,
+  PatchDirection,
+  StringRenderable
+} from "./types";
+
 import { BaseGrid } from "./Grid";
 
 export class DenseGrid<T> extends BaseGrid<T> {
@@ -76,6 +83,36 @@ export class DenseGrid<T> extends BaseGrid<T> {
     }
     for (let i = 0; i < this.size; i++) {
       this.cells[i] = cells[i]!;
+    }
+  }
+
+  patch2D(
+    patch: GridPatch2D<T>,
+    direction: PatchDirection
+  ) {
+    if (direction === "forward") {
+      for (const { x, y, next } of patch) {
+        this.set([x, y], next);
+      }
+    } else {
+      for (const { x, y, prev } of patch) {
+        this.set([x, y], prev);
+      }
+    }
+  }
+
+  patch3D(
+    patch: GridPatch3D<T>,
+    direction: PatchDirection
+  ) {
+    if (direction === "forward") {
+      for (const { x, y, z, next } of patch) {
+        this.set([x, y, z], next);
+      }
+    } else {
+      for (const { x, y, z, prev } of patch) {
+        this.set([x, y, z], prev);
+      }
     }
   }
 

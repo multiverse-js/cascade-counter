@@ -11,10 +11,10 @@ import { DenseGrid } from "../../reality/DenseGrid";
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
 
-import { Patch2D } from "../../time/types";
+import { TimelineMode, GridPatch2D, ScalarPatch } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
-import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D } from "../../time/Patch";
+import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
 
 // ---------------------------------------------------------------------------
 // Types & interfaces
@@ -46,11 +46,11 @@ export type ConnectXSnapshot<T> = {
 };
 
 // Difference between two snapshots
-export type ConnectXPatch<T> = {
-  readonly cells: ReadonlyArray<Patch2D<T>>;
-  readonly boardCursorIndex?: number;
-  readonly playerCursorIndex?: number;
-  readonly outcome?: ConnectXOutcome;
+export interface ConnectXPatch<T> {
+  readonly cells: GridPatch2D<T>;
+  readonly boardCursorIndex?: ScalarPatch<number>;
+  readonly playerCursorIndex?: ScalarPatch<number>;
+  readonly outcome?: ScalarPatch<ConnectXOutcome>;
 }
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
@@ -77,10 +77,12 @@ export type ConnectXTimeline<T> = Timeline<
 // ---------------------------------------------------------------------------
 
 export function createConnectXStateHistory<T>(
-  state: ConnectXState<T>
+  state: ConnectXState<T>,
+  mode: TimelineMode = "patch"
 ): ConnectXStateHistory<T> {
   return new StateHistory<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>(
     state,
+    { mode },
     {
       createSnapshot: (state) => {
         const { board, boardCursor, playerCursor, outcome } = state;
@@ -113,7 +115,7 @@ export function createConnectXStateHistory<T>(
         };
       },
 
-      applySnapshot: (snapshot, state) => {
+      applySnapshotToState: (snapshot, state) => {
         const { board, boardCursor, playerCursor } = state;
         const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
 
@@ -123,12 +125,24 @@ export function createConnectXStateHistory<T>(
         state.outcome = outcome;
       },
 
-      applyPatch: (base, patch) => {
+      applyPatchToSnapshot: (base, patch) => {
         return {
           cells: applyGridPatch2D(base.cells, patch.cells, state.board.bounds[0]),
-          boardCursorIndex: patch.boardCursorIndex ?? base.boardCursorIndex,
-          playerCursorIndex: patch.playerCursorIndex ?? base.playerCursorIndex,
-          outcome: patch.outcome ?? base.outcome
+
+          boardCursorIndex: applyScalarPatch(
+            base.boardCursorIndex,
+            patch.boardCursorIndex
+          ),
+
+          playerCursorIndex: applyScalarPatch(
+            base.playerCursorIndex,
+            patch.playerCursorIndex
+          ),
+
+          outcome: applyScalarPatch(
+            base.outcome,
+            patch.outcome
+          )
         };
       },
 
@@ -138,8 +152,7 @@ export function createConnectXStateHistory<T>(
           && patch.playerCursorIndex === undefined
           && patch.outcome === undefined
       },
-    },
-    { mode: "patch" }
+    }
   );
 }
 

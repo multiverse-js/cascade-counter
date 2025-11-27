@@ -1,12 +1,4 @@
-import { TimelineMode } from "./types";
-
-export interface TimelineEntry<Snapshot, Patch = Snapshot> {
-  index: number;
-  snapshot?: Snapshot;  // full snapshot (for checkpoints / caching)
-  patch?: Patch;          // patch from previous
-  label?: string;
-  timestamp: number;
-}
+import { TimelineEntry, TimelineMode } from "./types";
 
 export interface TimelineConfig<Snapshot, Patch = Snapshot> {
   mode: TimelineMode;
@@ -45,6 +37,12 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return true;
   }
 
+  moveToFirst(): boolean {
+    if (this.entries.length === 0) return false;
+    this.cursor = 0;
+    return true;
+  }
+
   /** Move cursor one step back. Returns true if it moved. */
   stepBackward(): boolean {
     if (this.cursor <= 0) return false;
@@ -60,6 +58,34 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     }
     if (this.cursor >= this.entries.length - 1) return false;
     this.cursor++;
+    return true;
+  }
+
+  /** Move cursor by a relative offset (can be negative).
+   * Clamps to [0, entries.length - 1].
+   * Returns true if the cursor actually changed.
+   */
+  stepBy(offset: number): boolean {
+    if (offset === 0 || this.entries.length === 0) return false;
+
+    const maxIndex = this.entries.length - 1;
+    let target = this.cursor + offset;
+
+    if (target < 0) target = 0;
+    if (target > maxIndex) target = maxIndex;
+    if (target === this.cursor) return false; // nothing changed
+
+    this.cursor = target;
+    return true;
+  }
+
+  /** Jump cursor directly to a specific index. Returns true if it moved. */
+  moveTo(targetIndex: number): boolean {
+    if (targetIndex < 0 || targetIndex >= this.entries.length) {
+      return false;
+    }
+    if (this.cursor === targetIndex) return true;
+    this.cursor = targetIndex;
     return true;
   }
 
@@ -183,7 +209,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.getSnapshotAt(this.cursor);
   }
 
-  /*8 Keep entries up to current index; drop everything after */
+  /** Keep entries up to current index; drop everything after. */
   private truncateFuture(): void {
     if (this.cursor < this.entries.length - 1) {
       this.entries.length = this.cursor + 1;

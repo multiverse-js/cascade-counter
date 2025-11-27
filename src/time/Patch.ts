@@ -1,35 +1,42 @@
-import { Patch2D, Patch3D } from "./types";
+import {
+  CellPatch2D,
+  CellPatch3D,
+  GridPatch2D,
+  GridPatch3D,
+  PatchDirection,
+  ScalarPatch
+} from "./types";
 
 export function computeGridPatch2D<T>(
-  prev: ReadonlyArray<T>,
-  next: ReadonlyArray<T>,
+  prevCells: ReadonlyArray<T>,
+  nextCells: ReadonlyArray<T>,
   width: number,
   height: number
-): Patch2D<T>[] {
-  if (prev.length !== next.length) {
+): GridPatch2D<T> {
+  if (prevCells.length !== nextCells.length) {
     throw new Error(
-      `patch2DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
+      `patch2DArray(): prev and next must have same length (got ${prevCells.length} vs ${nextCells.length})`
     );
   }
 
-  if (prev.length !== width * height) {
+  const expectedSize = width * height;
+  if (prevCells.length !== expectedSize) {
     throw new Error(
-      `patch2DArray: width*height = ${width * height} does not match array length = ${prev.length}`
+      `patch2DArray(): width*height = ${expectedSize} does not match array length = ${prevCells.length}`
     );
   }
 
-  const patches: Patch2D<T>[] = [];
-  const length = prev.length;
+  const patches: CellPatch2D<T>[] = [];
 
-  for (let i = 0; i < length; i++) {
-    const prevValue = prev[i];
-    const nextValue = next[i];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      const prev = prevCells[i];
+      const next = nextCells[i];
 
-    if (prevValue !== nextValue) {
-      const x = i % width;
-      const y = Math.floor(i / width);
-
-      patches.push({ x, y, value: nextValue });
+      if (prev !== next) {
+        patches.push({ x, y, prev, next });
+      }
     }
   }
 
@@ -37,55 +44,60 @@ export function computeGridPatch2D<T>(
 }
 
 export function computeGridPatch3D<T>(
-  prev: ReadonlyArray<T>,
-  next: ReadonlyArray<T>,
+  prevCells: ReadonlyArray<T>,
+  nextCells: ReadonlyArray<T>,
   width: number,
   height: number,
   depth: number
-): Patch3D<T>[] {
-  if (prev.length !== next.length) {
+): GridPatch3D<T> {
+  if (prevCells.length !== nextCells.length) {
     throw new Error(
-      `patch3DArray: prev and next must have same length (got ${prev.length} vs ${next.length})`
+      `computeGridPatch3D(): prev and next must have same length (got ${prevCells.length} vs ${nextCells.length})`
     );
   }
 
   const expectedSize = width * height * depth;
-  if (prev.length !== expectedSize) {
+  if (prevCells.length !== expectedSize) {
     throw new Error(
-      `patch3DArray: width*height*depth = ${expectedSize} does not match array length = ${prev.length}`
+      `computeGridPatch3D(): width*height*depth = ${expectedSize} does not match array length = ${prevCells.length}`
     );
   }
 
-  const patches: Patch3D<T>[] = [];
-  const length = prev.length;
+  const patches: CellPatch3D<T>[] = [];
+  const layerSize = width * height;
 
-  for (let index = 0; index < length; index++) {
-    const prevValue = prev[index];
-    const nextValue = next[index];
+  for (let z = 0; z < depth; z++) {
+    const zOffset = z * layerSize;
+    for (let y = 0; y < height; y++) {
+      const yOffset = y * width;
+      for (let x = 0; x < width; x++) {
+        const i = zOffset + yOffset + x;
+        const prev = prevCells[i];
+        const next = nextCells[i];
 
-    if (prevValue !== nextValue) {
-      const planeSize = width * height;
-
-      const z = Math.floor(index / planeSize);
-      const rem1 = index - z * planeSize;
-      const y = Math.floor(rem1 / width);
-      const x = rem1 % width;
-
-      patches.push({ x, y, z, value: nextValue });
+        if (prev !== next) {
+          patches.push({ x, y, z, prev, next });
+        }
+      }
     }
   }
 
   return patches;
 }
 
-export function computeScalarPatch<T>(prev: T, next: T): T | undefined {
-  return Object.is(prev, next) ? undefined : next;
+export function computeScalarPatch<T>(
+  prev: T | undefined,
+  next: T | undefined
+): ScalarPatch<T> | undefined {
+  if (prev === next) return undefined;
+  return { prev, next };
 }
 
 export function applyGridPatch2D<T>(
   baseCells: ReadonlyArray<T>,
-  cellsPatch: ReadonlyArray<Patch2D<T>>,
-  width: number
+  cellsPatch: GridPatch2D<T>,
+  width: number,
+  dir: PatchDirection = "forward"
 ): ReadonlyArray<T> {
   if (cellsPatch.length === 0) {
     // No changes: you can safely reuse the base reference.
@@ -94,9 +106,16 @@ export function applyGridPatch2D<T>(
 
   const cells = baseCells.slice();
 
-  for (const cell of cellsPatch) {
-    const index = cell.y * width + cell.x;
-    cells[index] = cell.value;
+  if (dir === "forward") {
+    for (const cell of cellsPatch) {
+      const index = cell.y * width + cell.x;
+      cells[index] = cell.next;
+    }
+  } else {
+    for (const cell of cellsPatch) {
+      const index = cell.y * width + cell.x;
+      cells[index] = cell.prev;
+    }
   }
 
   return cells;
@@ -104,9 +123,10 @@ export function applyGridPatch2D<T>(
 
 export function applyGridPatch3D<T>(
   baseCells: ReadonlyArray<T>,
-  cellsPatch: ReadonlyArray<Patch3D<T>>,
+  cellsPatch: GridPatch3D<T>,
   width: number,
-  height: number
+  height: number,
+  dir: PatchDirection = "forward"
 ): ReadonlyArray<T> {
   if (cellsPatch.length === 0) {
     // No changes: you can safely reuse the base reference.
@@ -116,10 +136,30 @@ export function applyGridPatch3D<T>(
   const cells = baseCells.slice();
   const layerSize = width * height;
 
-  for (const cell of cellsPatch) {
-    const index = cell.z * layerSize + cell.y * width + cell.x;
-    cells[index] = cell.value;
+  if (dir === "forward") {
+    for (const cell of cellsPatch) {
+      const index = cell.z * layerSize + cell.y * width + cell.x;
+      cells[index] = cell.next;
+    }
+  } else {
+    for (const cell of cellsPatch) {
+      const index = cell.z * layerSize + cell.y * width + cell.x;
+      cells[index] = cell.prev;
+    }
   }
 
   return cells;
 }
+
+export const applyScalarPatch = <T>(
+  base: T,
+  patch: ScalarPatch<T> | undefined,
+  dir: PatchDirection = "forward"
+): T => {
+  if (!patch) return base;
+
+  const value = dir === "forward" ? patch.next : patch.prev;
+
+  // Fallback to base if patch value is undefined
+  return value === undefined ? base : value;
+};

@@ -17,6 +17,8 @@ import { gridToString } from "../../reality/DenseGrid";
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
 const RIGHT_ARROW = "\u001b[C";
+const F_LOWERCASE = '\u0066';
+const L_LOWERCASE = '\u006C';
 
 const KEY_MAP = createKeyMap<ConnectXAction>({
   a: { type: "moveLeft" },
@@ -53,14 +55,24 @@ class ConnectXConsole<T extends StringRenderable> {
       }
       // time travel (← / →)
       if (key === LEFT_ARROW) {
-        if (this.timeline.stepBackward()) {
+        const snap = this.history.stepBy(-1);
+        if (snap) this.render(snap);
+        return;
+      }
+      if (key === RIGHT_ARROW) {
+        const snap = this.history.stepBy(1);
+        if (snap) this.render(snap);
+        return;
+      }
+      if (key === L_LOWERCASE) {
+        if (this.history.timeline.moveToPresent()) {
           const snap = this.history.applySnapshot();
           this.render(snap);
         }
         return;
       }
-      if (key === RIGHT_ARROW) {
-        if (this.timeline.stepForward()) {
+      if (key === F_LOWERCASE) {
+        if (this.history.timeline.moveToFirst()) {
           const snap = this.history.applySnapshot();
           this.render(snap);
         }
@@ -132,7 +144,9 @@ class ConnectXConsole<T extends StringRenderable> {
     }) + "\n";
 
     // HUD
-    output += "Controls: A = left, D = right, W = drop, Q = quit, ← = undo move, → = redo move\n";
+    output += "Controls: A = left, D = right, W = drop, Q = quit\n";
+    output += "          F = skip to first move, L = skip to last move\n";
+    output += "          ← = undo move, → = redo move\n\n"
     output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
