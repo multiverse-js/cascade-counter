@@ -148,9 +148,9 @@ class ConnectXConsole<T extends StringRenderable> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 7,
-  boardHeight: 6,
-  playerTokens: ["🔴", "🟡"],
+  boardWidth: 7 * 4,
+  boardHeight: 6 * 4,
+  playerTokens: ["🔴", "🟡", "🟣"],
   emptyToken: ".",
   winToken: "🟢",
   winLength: 4
