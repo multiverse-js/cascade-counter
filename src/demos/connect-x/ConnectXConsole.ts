@@ -17,8 +17,8 @@ import { gridToString } from "../../reality/DenseGrid";
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
 const RIGHT_ARROW = "\u001b[C";
-const F_LOWERCASE = '\u0066';
-const L_LOWERCASE = '\u006C';
+const F_LOWERCASE = "\u0066";
+const L_LOWERCASE = "\u006C";
 
 const KEY_MAP = createKeyMap<ConnectXAction>({
   a: { type: "moveLeft" },

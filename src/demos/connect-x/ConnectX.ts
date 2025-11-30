@@ -16,6 +16,7 @@ import { Timeline } from "../../time/Timeline";
 import { StateHistory } from "../../time/StateHistory";
 import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
 
+
 export type ConnectXSettings<T> = {
   readonly boardWidth: number;
   readonly boardHeight: number;

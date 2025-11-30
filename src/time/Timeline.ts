@@ -168,7 +168,6 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       throw new Error("bad index");
     }
     const entry = this.entries[index];
-
     if (entry.snapshot) {
       return entry.snapshot;
     }

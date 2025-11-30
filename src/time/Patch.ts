@@ -151,11 +151,11 @@ export function applyGridPatch3D<T>(
   return cells;
 }
 
-export const applyScalarPatch = <T>(
+export function applyScalarPatch<T>(
   base: T,
   patch: ScalarPatch<T> | undefined,
   dir: PatchDirection = "forward"
-): T => {
+): T {
   if (!patch) return base;
 
   const value = dir === "forward" ? patch.next : patch.prev;
