@@ -31,7 +31,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     this.hooks = hooks;
 
     const mode: TimelineMode = config.mode ?? "patch";
-    this.mode = config.mode ?? "patch";
+    this.mode = mode;
 
     // In patch/hybrid modes, we *require* createPatch
     if ((mode === "patch" || mode === "hybrid") && !hooks.createPatch) {
@@ -106,16 +106,22 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   }
 
   rewind(steps: number): Snapshot | undefined {
-    if (steps === 0) return this.resolveSnapshot();
-    if (steps < 0) throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
-
+    if (steps === 0) {
+      return this.resolveSnapshot();
+    }
+    if (steps < 0) {
+      throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
+    }
     return this.stepBy(steps, -1);
   }
 
   fastForward(steps: number): Snapshot | undefined {
-    if (steps === 0) return this.resolveSnapshot();
-    if (steps < 0) throw new Error(`TimeMachine.fastForward(): steps must not be negative (got ${steps})`);
-
+    if (steps === 0) {
+      return this.resolveSnapshot();
+    }
+    if (steps < 0) {
+      throw new Error(`TimeMachine.fastForward(): steps must not be negative (got ${steps})`);
+    }
     return this.stepBy(steps, 1);
   }
 
