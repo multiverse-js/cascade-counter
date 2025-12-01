@@ -1,5 +1,5 @@
 import { CascadeCounter } from "./Counter";
-import { posMod, clampToRange } from "../utils/MiscUtils";
+import { posMod, clamp } from "../utils/MiscUtils";
 
 import {
   assertSafeIntegerInRangeInclusive,
@@ -29,7 +29,7 @@ export function setAxisClamped(counter: CascadeCounter, axis: number, value: num
 
   const base = counter.getBaseAt(axis);
   const current = counter.getAt(axis);
-  const next = clampToRange(value, 0, base - 1);
+  const next = clamp(value, 0, base - 1);
 
   if (next !== current) {
     counter.setAt(axis, next);

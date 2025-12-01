@@ -1,5 +1,5 @@
 import {
-  clampToRange,
+  clamp,
   posMod,
   arraysEqual
 } from "../utils/MiscUtils";
@@ -232,7 +232,7 @@ export class CascadeCounter {
     assertSafeInteger("setAt", "value", value);
 
     const base = this._getBaseAt(index, "setAt");
-    const next = this.isBoundedLevel(index) ? clampToRange(value, 0, base - 1) : value;
+    const next = this.isBoundedLevel(index) ? clamp(value, 0, base - 1) : value;
 
     if (this._values[index] === next) {
       return this;
@@ -784,7 +784,7 @@ export class CascadeCounter {
 
     for (let i = 0; i < last; i++) {
       const base = this._getBaseAt(i, "_clampAll");
-      this._values[i] = clampToRange(values[i], 0, base - 1);
+      this._values[i] = clamp(values[i], 0, base - 1);
     }
     if (unboundedTop) {
       this._assertTopDigitNonNegative(values[this.levels - 1], "_clampAll");
