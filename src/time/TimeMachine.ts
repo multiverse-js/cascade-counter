@@ -1,16 +1,10 @@
-import { Timeline } from "./Timeline";
-import { PatchDirection, TimelineMode } from "./types";
+import { Timeline, TimelineConfig, TimelineHooks } from "./Timeline";
+import { PatchDirection } from "./types";
 
-export interface TimeMachineOptions {
-  mode?: TimelineMode;
-  checkpointInterval?: number;
-}
-
-export interface TimeMachineHooks<State, Snapshot, Patch = Snapshot> {
+export interface TimeMachineHooks<State, Snapshot, Patch = Snapshot> extends TimelineHooks<Snapshot, Patch> {
   createSnapshot: (state: State) => Snapshot;
   applySnapshotToState: (snap: Snapshot, state: State) => void;
   createPatch?: (prev: Snapshot, next: Snapshot) => Patch;
-  applyPatchToSnapshot?: (base: Snapshot, patch: Patch) => Snapshot;
   applyPatchToState?: (patch: Patch, direction: PatchDirection, state: State) => void;
   isEmptyPatch?: (patch: Patch) => boolean;
 }
@@ -20,36 +14,30 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   readonly timeline: Timeline<Snapshot, Patch>;
 
   private readonly hooks: TimeMachineHooks<State, Snapshot, Patch>;
-  private readonly mode: TimelineMode;
+  private readonly config: TimelineConfig;
 
   constructor(
     state: State,
-    options: TimeMachineOptions = {},
+    config: TimelineConfig,
     hooks: TimeMachineHooks<State, Snapshot, Patch>,
   ) {
     this.state = state;
     this.hooks = hooks;
-
-    const mode: TimelineMode = options.mode ?? "patch";
-    this.mode = mode;
+    this.config = config;
 
     // In patch/hybrid modes, we *require* createPatch
-    if ((mode === "patch" || mode === "hybrid") && !hooks.createPatch) {
+    if ((config.mode === "patch" || config.mode === "hybrid") && !hooks.createPatch) {
       throw new Error(
-        `TimeMachine: createPatch hook is required in '${mode}' mode.`
+        `TimeMachine: createPatch hook is required in '${config.mode}' mode.`
       );
     }
 
-    const { applyPatchToSnapshot } = hooks;
-
-    this.timeline = new Timeline<Snapshot, Patch>({
-      mode,
-      checkpointInterval: options.checkpointInterval,
-      // Only wire applyPatch if we're actually using patches
-      ...(mode !== "full" && applyPatchToSnapshot && {
-        applyPatch: (base, patch) => applyPatchToSnapshot(base, patch),
-      }),
-    });
+    this.timeline = new Timeline<Snapshot, Patch>(
+      config,
+      {
+        applyPatchToSnapshot: hooks.applyPatchToSnapshot,
+      }
+    );
   }
 
   commit(message?: string): Snapshot {
@@ -63,7 +51,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     }
 
     // FULL MODE: never use patches, just store snapshots every time
-    if (!createPatch || this.mode === "full") {
+    if (!createPatch || this.config.mode === "full") {
       this.timeline.pushFull(snap, message);
       return snap;
     }

@@ -1,23 +1,24 @@
 import { TimelineEntry, TimelineMode } from "./types";
 
-export interface TimelineOptions {
+export interface TimelineConfig {
   mode: TimelineMode;
   checkpointInterval?: number;
 }
 
-export interface TimelineConfig<Snapshot, Patch = Snapshot>
-  extends TimelineOptions {
-  applyPatch?: (base: Snapshot, patch: Patch) => Snapshot;
+export interface TimelineHooks<Snapshot, Patch = Snapshot> {
+  applyPatchToSnapshot?: (base: Snapshot, patch: Patch) => Snapshot;
 }
 
 export class Timeline<Snapshot, Patch = Snapshot> {
   private entries: TimelineEntry<Snapshot, Patch>[] = [];
-  private config: TimelineConfig<Snapshot, Patch>;
+  private config: TimelineConfig;
+  private hooks: TimelineHooks<Snapshot, Patch>;
   private latestSnapshot?: Snapshot;
   private cursor: number = -1; // -1 = no selection yet
 
-  constructor(config: TimelineConfig<Snapshot, Patch>) {
+  constructor(config: TimelineConfig, hooks: TimelineHooks<Snapshot, Patch>) {
     this.config = config;
+    this.hooks = hooks;
   }
 
   get length(): number {
@@ -126,14 +127,14 @@ export class Timeline<Snapshot, Patch = Snapshot> {
         "Timeline.pushPatch() called with no base snapshot; call pushFull() at least once."
       );
     }
-    if (!this.config.applyPatch) {
+    if (!this.hooks.applyPatchToSnapshot) {
       throw new Error("Timeline.pushPatch() requires config.applyPatch.");
     }
 
     if (truncate) this.truncateFuture();
 
     const index = this.entries.length;
-    const nextSnapshot = this.config.applyPatch(this.latestSnapshot, patch);
+    const nextSnapshot = this.hooks.applyPatchToSnapshot(this.latestSnapshot, patch);
 
     const checkpointInterval =
       this.config.mode === "hybrid"
@@ -192,7 +193,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     }
 
     // In 'patch'/'hybrid' modes, we need applyPatch to reconstruct.
-    const applyPatch = this.config.applyPatch;
+    const applyPatch = this.hooks.applyPatchToSnapshot;
     if (!applyPatch) {
       throw new Error(
         "Timeline.getSnapshotAt(): applyPatch is required in 'patch'/'hybrid' modes."
