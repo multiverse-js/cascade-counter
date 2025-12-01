@@ -1,5 +1,6 @@
 import { Timeline, TimelineConfig, TimelineHooks } from "./Timeline";
 import { PatchDirection, TimeMachineTopology } from "./types";
+import { posMod } from "../utils/MiscUtils";
 
 export interface TimeMachineHooks<State, Snapshot, Patch = Snapshot>
   extends TimelineHooks<Snapshot, Patch> {
@@ -117,7 +118,9 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
    */
   cycleBranch(offset: number): Snapshot {
     if (this.topology !== "branching") {
-      throw new Error("TimeMachine.cycleBranch(): branching topology is disabled");
+      throw new Error(
+        `TimeMachine.cycleBranch(): branching topology is disabled (got '${this.topology}')`
+      );
     }
 
     const ids = this.getOrderedBranchIds();
@@ -132,8 +135,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
       );
     }
 
-    const len = ids.length;
-    const nextIndex = ((currentIndex + offset) % len + len) % len;
+    const nextIndex = posMod(currentIndex + offset, ids.length);
     const nextId = ids[nextIndex];
 
     return this.switchBranch(nextId);
