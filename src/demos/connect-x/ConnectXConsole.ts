@@ -3,6 +3,7 @@ import {
   ConnectXState,
   ConnectXSettings,
   ConnectXAction,
+  ConnectXPiece,
   ConnectXEngine,
   ConnectXSnapshot,
   ConnectXTimeMachine,
@@ -29,13 +30,6 @@ const KEY_MAP = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
-interface FallingPiece<T> {
-  column: number;   // x index on the board
-  toY: number;      // target y cell (integer row)
-  currentY: number; // current animated y (can be fractional)
-  token: T;         // whatever your player token type is
-}
-
 class ConnectXConsole<T extends StringRenderable> {
   private readonly game: ConnectXGame<T>;
   private readonly engine: ConnectXEngine<T>;
@@ -43,7 +37,7 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly machine: ConnectXTimeMachine<T>;
   private readonly ticker: Ticker;
 
-  private fallingPiece: FallingPiece<T> | undefined;
+  private fallingPiece: ConnectXPiece<T> | undefined;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
@@ -56,7 +50,7 @@ class ConnectXConsole<T extends StringRenderable> {
     });
     this.ticker = new Ticker();
 
-    const speed = 0.01; // rows per ms
+    const speed = 0.05; // rows per ms
 
     // Single tick handler for the life of the console
     this.ticker.onTick((dtMs) => {
@@ -64,8 +58,8 @@ class ConnectXConsole<T extends StringRenderable> {
 
       this.fallingPiece.currentY += speed * dtMs;
 
-      if (this.fallingPiece.currentY >= this.fallingPiece.toY) {
-        this.fallingPiece.currentY = this.fallingPiece.toY;
+      if (this.fallingPiece.currentY >= this.fallingPiece.targetY) {
+        this.fallingPiece.currentY = this.fallingPiece.targetY;
 
         const originalCursor = this.state.boardCursor.values[0];
 
@@ -170,9 +164,9 @@ class ConnectXConsole<T extends StringRenderable> {
 
         this.fallingPiece = {
           column: targetX,
-          toY: targetY,
+          targetY,
           currentY: 0,
-          token: this.game.getPlayerToken(), // current player
+          token: this.game.getPlayerToken(),
         };
 
         // Ensure we only attach the tick handler once (do this in constructor ideally)
@@ -210,10 +204,8 @@ class ConnectXConsole<T extends StringRenderable> {
 
       // clamp & quantize Y to an integer row
       const y = Math.max(0, Math.min(height - 1, Math.floor(currentY)));
-      if (column >= 0 && column < width) {
-        const index = y * width + column;
-        cells[index] = token;
-      }
+      const index = y * width + column;
+      cells[index] = token;
     }
 
     this.renderFrame(cells);
@@ -266,8 +258,8 @@ class ConnectXConsole<T extends StringRenderable> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 7,
-  boardHeight: 6,
+  boardWidth: 7 * 4,
+  boardHeight: 6 * 4,
   playerTokens: ["🔴", "🟡", "🟣"],
   emptyToken: ".",
   winToken: "🟢",

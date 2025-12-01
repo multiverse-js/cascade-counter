@@ -50,6 +50,13 @@ export type ConnectXPatch<T> = {
   readonly outcome?: ScalarPatch<ConnectXOutcome>;
 };
 
+export type ConnectXPiece<T> = {
+  readonly column: number;   // x index on the board
+  readonly targetY: number;  // target y cell (integer row)
+  readonly token: T;         // whatever the player token type is
+  currentY: number;          // current animated y (can be fractional)
+}
+
 export type ConnectXOutcome = "win" | "draw" | "quit";
 
 export type ConnectXAction =
