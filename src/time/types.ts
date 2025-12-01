@@ -33,3 +33,5 @@ export type ScalarPatch<T> = {
 }
 
 export type PatchDirection = "forward" | "backward";
+
+export type TimeMachineTopology = "linear" | "branching";

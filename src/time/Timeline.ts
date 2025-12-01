@@ -255,4 +255,39 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       this.latestSnapshot = this.getSnapshotAt(lastIndex)!;
     }
   }
+
+  /**
+   * Create a new Timeline that contains a copy of all entries from `source`
+   * in the range [0, forkIndex], preserving snapshot/patch structure and labels.
+   */
+  static forkFrom<Snapshot, Patch>(
+    source: Timeline<Snapshot, Patch>,
+    forkIndex: number,
+    config: TimelineConfig,
+    hooks: TimelineHooks<Snapshot, Patch>,
+  ): Timeline<Snapshot, Patch> {
+    if (forkIndex < 0 || forkIndex >= source.length) {
+      throw new Error(
+        `Timeline.forkFrom(): forkIndex ${forkIndex} is out of range [0, ${source.length - 1}]`,
+      );
+    }
+
+    const clone = new Timeline<Snapshot, Patch>(config, hooks);
+
+    for (let i = 0; i <= forkIndex; i++) {
+      const entry = source.getEntry(i);
+
+      if (entry.snapshot) {
+        clone.pushFull(entry.snapshot, entry.label, false);
+      } else if (entry.patch !== undefined) {
+        clone.pushPatch(entry.patch, entry.label, false);
+      } else {
+        throw new Error(
+          `Timeline.forkFrom(): entry ${i} has neither snapshot nor patch`,
+        );
+      }
+    }
+
+    return clone;
+  }
 }

@@ -16,6 +16,8 @@ import { gridToString } from "../../reality/DenseGrid";
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
 const RIGHT_ARROW = "\u001b[C";
+const UP_ARROW = "\u001b[A";
+const DOWN_ARROW = "\u001b[B";
 const F_LOWERCASE = "\u0066";
 const L_LOWERCASE = "\u006C";
 
@@ -36,7 +38,11 @@ class ConnectXConsole<T extends StringRenderable> {
     this.game = new ConnectXGame(settings);
     this.engine = new ConnectXEngine(this.game);
     this.state = this.game.state;
-    this.machine = createConnectXTimeMachine(this.state);
+
+    this.machine = createConnectXTimeMachine(this.state, {
+      mode: "patch",
+      topology: "branching"
+    });
   }
 
   start() {
@@ -60,17 +66,38 @@ class ConnectXConsole<T extends StringRenderable> {
       }
     });
 
-    if (this.machine.commit()) {
-      this.render();
-    }
+    this.machine.commit();
+    this.render();
   }
 
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
     switch (key) {
-      case LEFT_ARROW: return this.machine.rewind(1);
-      case RIGHT_ARROW: return this.machine.fastForward(1);
-      case F_LOWERCASE: return this.machine.goToStart();
-      case L_LOWERCASE: return this.machine.goToEnd();
+      case LEFT_ARROW: {
+        return this.machine.rewind(1);
+      }
+      case RIGHT_ARROW: {
+        return this.machine.fastForward(1);
+      }
+      case UP_ARROW: {
+        this.machine.nextBranch();
+        return this.machine.goToEnd();
+      }
+      case DOWN_ARROW: {
+        this.machine.previousBranch();
+        return this.machine.goToEnd();
+      }
+      case F_LOWERCASE: {
+        if (this.machine.timeline.length <= 1) {
+          return undefined; // no moves yet; no-op
+        }
+        return this.machine.goTo(1);
+      }
+      case L_LOWERCASE: {
+        if (this.machine.timeline.length <= 1) {
+          return undefined; // no moves yet; no-op
+        }
+        return this.machine.goToEnd();
+      }
       default: return undefined;
     }
   }
@@ -101,10 +128,12 @@ class ConnectXConsole<T extends StringRenderable> {
     const { board, boardCursor, playerCursor, outcome } = this.state;
     const [width, height] = board.bounds;
     const boardCursorIndex = boardCursor.values[0];
+
     const token = this.game.getPlayerToken(playerCursor.values[0]);
+    const { timeline, branchCount, currentBranchId } = this.machine;
 
     let output = `${token}'s Turn`;
-    output += this.machine.timeline.isAtPresent() ? "\n\n" : " (Viewing past move)\n\n";
+    output += timeline.isAtPresent() ? "\n\n" : " (Viewing past move)\n\n";
 
     // cursor row
     for (let x = 0; x < width; x++) {
@@ -122,8 +151,9 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "Controls: A = left, D = right, W = drop, Q = quit\n";
     output += "          F = skip to first move, L = skip to last move\n";
     output += "          ← = undo move, → = redo move\n\n"
-    output += `Move: ${this.machine.timeline.index + 1}/${this.machine.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
+    output += `Move: ${timeline.index}/${timeline.length - 1}\n`;
+    output += `Timeline branch: ${currentBranchId + 1}/${branchCount}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 
     process.stdout.write(output);

@@ -11,9 +11,9 @@ import { DenseGrid } from "../../reality/DenseGrid";
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
 
-import { TimelineMode, GridPatch2D, ScalarPatch } from "../../time/types";
+import { GridPatch2D, ScalarPatch } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
-import { TimeMachine } from "../../time/TimeMachine";
+import { TimeMachine, TimeMachineConfig } from "../../time/TimeMachine";
 import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
 
 
@@ -75,11 +75,11 @@ export type ConnectXTimeline<T> = Timeline<
 
 export function createConnectXTimeMachine<T>(
   state: ConnectXState<T>,
-  mode: TimelineMode = "patch"
+  config: TimeMachineConfig
 ): ConnectXTimeMachine<T> {
   return new TimeMachine<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>(
     state,
-    { mode },
+    config,
     {
       createSnapshot: (state) => {
         const { board, boardCursor, playerCursor, outcome } = state;
@@ -148,7 +148,7 @@ export function createConnectXTimeMachine<T>(
           && patch.boardCursorIndex === undefined
           && patch.playerCursorIndex === undefined
           && patch.outcome === undefined
-      },
+      }
     }
   );
 }
