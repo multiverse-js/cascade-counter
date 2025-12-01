@@ -1,17 +1,17 @@
 import { Timeline } from "./Timeline";
 import { PatchDirection, TimelineMode } from "./types";
 
-export interface TimeMachineConfig {
+export interface TimeMachineOptions {
   mode?: TimelineMode;
   checkpointInterval?: number;
 }
 
-export interface TimeMachineHooks<State, Snapshot, Patch> {
+export interface TimeMachineHooks<State, Snapshot, Patch = Snapshot> {
   createSnapshot: (state: State) => Snapshot;
-  createPatch: (prev: Snapshot, next: Snapshot) => Patch;
   applySnapshotToState: (snap: Snapshot, state: State) => void;
+  createPatch?: (prev: Snapshot, next: Snapshot) => Patch;
   applyPatchToSnapshot?: (base: Snapshot, patch: Patch) => Snapshot;
-  applyPatchToState?: (patch: Patch, direction: PatchDirection, state: State) => void
+  applyPatchToState?: (patch: Patch, direction: PatchDirection, state: State) => void;
   isEmptyPatch?: (patch: Patch) => boolean;
 }
 
@@ -20,43 +20,63 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   readonly timeline: Timeline<Snapshot, Patch>;
 
   private readonly hooks: TimeMachineHooks<State, Snapshot, Patch>;
+  private readonly mode: TimelineMode;
 
   constructor(
     state: State,
-    config: TimeMachineConfig = {},
+    config: TimeMachineOptions = {},
     hooks: TimeMachineHooks<State, Snapshot, Patch>,
   ) {
     this.state = state;
     this.hooks = hooks;
+
+    const mode: TimelineMode = config.mode ?? "patch";
+    this.mode = config.mode ?? "patch";
+
+    // In patch/hybrid modes, we *require* createPatch
+    if ((mode === "patch" || mode === "hybrid") && !hooks.createPatch) {
+      throw new Error(
+        `TimeMachine: createPatch hook is required in '${mode}' mode.`
+      );
+    }
+
     const { applyPatchToSnapshot } = hooks;
 
     this.timeline = new Timeline<Snapshot, Patch>({
-      mode: config.mode ?? "patch",
+      mode,
       checkpointInterval: config.checkpointInterval,
-      ...(applyPatchToSnapshot && {
+      // Only wire applyPatch if we're actually using patches
+      ...(mode !== "full" && applyPatchToSnapshot && {
         applyPatch: (base, patch) => applyPatchToSnapshot(base, patch),
       }),
     });
   }
 
-  commit(message?: string): Snapshot | undefined {
+  commit(message?: string): Snapshot {
     const snap = this.hooks.createSnapshot(this.state);
+    const { createPatch, isEmptyPatch } = this.hooks;
 
-    // First ever record: store full snapshot
+    // First ever record: always store a full snapshot
     if (this.timeline.length === 0) {
       this.timeline.pushFull(snap, message);
       return snap;
     }
 
-    // Baseline: the snapshot at the current cursor position
+    // FULL MODE: never use patches, just store snapshots every time
+    if (!createPatch || this.mode === "full") {
+      this.timeline.pushFull(snap, message);
+      return snap;
+    }
+
+    // Baseline: snapshot at current cursor (present or history)
     const prevSnapshot =
       this.timeline.isAtPresent()
         ? this.timeline.getLatestSnapshot()!
         : this.timeline.getSnapshotAt(this.timeline.index)!;
 
-    const patch = this.hooks.createPatch(prevSnapshot, snap);
+    const patch = createPatch(prevSnapshot, snap);
 
-    if (this.hooks.isEmptyPatch && this.hooks.isEmptyPatch(patch)) {
+    if (isEmptyPatch && isEmptyPatch(patch)) {
       // No state change → no new history entry
       return snap;
     }
@@ -65,22 +85,22 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     return snap;
   }
 
-  skipToEnd(): Snapshot {
-    if (!this.timeline.skipToEnd()) {
+  goToEnd(): Snapshot {
+    if (!this.timeline.goToEnd()) {
       throw new Error("TimeMachine.skipToEnd(): empty timeline");
     }
     return this.applySnapshot()!;
   }
 
-  skipToStart(): Snapshot {
-    if (!this.timeline.skipToStart()) {
+  goToStart(): Snapshot {
+    if (!this.timeline.goToStart()) {
       throw new Error("TimeMachine.skipToStart(): empty timeline");
     }
     return this.applySnapshot()!;
   }
 
-  skipTo(index: number): Snapshot | undefined {
-    this.timeline.skipTo(index);
+  goTo(index: number): Snapshot | undefined {
+    this.timeline.goTo(index);
 
     return this.applySnapshot();
   }

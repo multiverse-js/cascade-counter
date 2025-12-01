@@ -34,16 +34,27 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.cursor === this.entries.length - 1;
   }
 
-  skipToStart(): boolean {
+  goToStart(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = 0;
     return true;
   }
 
   /** Move cursor to the latest entry, if any. */
-  skipToEnd(): boolean {
+  goToEnd(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = this.entries.length - 1;
+    return true;
+  }
+
+  /** Jump cursor directly to a specific index. Returns true if it moved. */
+  goTo(index: number): boolean {
+    const length = this.entries.length;
+    if (index < 0 || index >= length) {
+      throw new Error(`Timeline.skipTo(): index ${index} is out of bounds [0, ${length - 1}]`);
+    }
+    if (this.cursor === index) return false;
+    this.cursor = index;
     return true;
   }
 
@@ -80,17 +91,6 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     if (target === this.cursor) return false; // nothing changed
 
     this.cursor = target;
-    return true;
-  }
-
-  /** Jump cursor directly to a specific index. Returns true if it moved. */
-  skipTo(index: number): boolean {
-    const length = this.entries.length;
-    if (index < 0 || index >= length) {
-      throw new Error(`Timeline.skipTo(): index ${index} is out of bounds [0, ${length - 1}]`);
-    }
-    if (this.cursor === index) return false;
-    this.cursor = index;
     return true;
   }
 
@@ -163,14 +163,14 @@ export class Timeline<Snapshot, Patch = Snapshot> {
 
   getEntry(index: number): TimelineEntry<Snapshot, Patch> {
     if (index < 0 || index >= this.entries.length) {
-      throw new Error("bad index");
+      throw new Error(`Timeline.getSnapshotAt(): Index out of range (got ${index})`);
     }
     return this.entries[index];
   }
 
   getSnapshotAt(index: number): Snapshot | undefined {
     if (index < 0 || index >= this.entries.length) {
-      throw new Error("bad index");
+      throw new Error(`Timeline.getSnapshotAt(): Index out of range (got ${index})`);
     }
     const entry = this.entries[index];
     if (entry.snapshot) {

@@ -92,6 +92,16 @@ export function createConnectXTimeMachine<T>(
         };
       },
 
+      applySnapshotToState: (snapshot, state) => {
+        const { board, boardCursor, playerCursor } = state;
+        const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
+
+        board.loadFromArray(cells);
+        boardCursor.setAt(0, boardCursorIndex);
+        playerCursor.setAt(0, playerCursorIndex);
+        state.outcome = outcome;
+      },
+
       createPatch: (prev, next) => {
         const [width, height] = state.board.bounds;
 
@@ -110,16 +120,6 @@ export function createConnectXTimeMachine<T>(
 
           outcome: computeScalarPatch(prev.outcome, next.outcome)
         };
-      },
-
-      applySnapshotToState: (snapshot, state) => {
-        const { board, boardCursor, playerCursor } = state;
-        const { cells, boardCursorIndex, playerCursorIndex, outcome } = snapshot;
-
-        board.loadFromArray(cells);
-        boardCursor.setAt(0, boardCursorIndex);
-        playerCursor.setAt(0, playerCursorIndex);
-        state.outcome = outcome;
       },
 
       applyPatchToSnapshot: (base, patch) => {

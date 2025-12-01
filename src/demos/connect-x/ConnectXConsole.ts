@@ -52,20 +52,25 @@ class ConnectXConsole<T extends StringRenderable> {
         this.render();
         return;
       }
+
       // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
-      if (action && this.processGameAction(action)) this.render();
+      if (action && this.processGameAction(action)) {
+        this.render();
+      }
     });
 
-    if (this.machine.commit()) this.render();
+    if (this.machine.commit()) {
+      this.render();
+    }
   }
 
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
     switch (key) {
       case LEFT_ARROW: return this.machine.rewind(1);
       case RIGHT_ARROW: return this.machine.fastForward(1);
-      case F_LOWERCASE: return this.machine.skipToStart();
-      case L_LOWERCASE: return this.machine.skipToEnd();
+      case F_LOWERCASE: return this.machine.goToStart();
+      case L_LOWERCASE: return this.machine.goToEnd();
       default: return undefined;
     }
   }
