@@ -66,7 +66,6 @@ class ConnectXConsole<T extends StringRenderable> {
       this.fallingPiece.currentY += speed * dtMs;
 
       if (this.fallingPiece.currentY >= this.fallingPiece.toY) {
-        // Snap to final
         this.fallingPiece.currentY = this.fallingPiece.toY;
 
         const originalCursor = this.state.boardCursor.values[0];
@@ -76,11 +75,10 @@ class ConnectXConsole<T extends StringRenderable> {
 
         // Let the engine/game handle win/draw/switchPlayer logic
         this.engine.dispatch({ type: "dropPiece" });
+        this.machine.commit("drop");
 
-        // Restore the user's current cursor position (wherever they moved it)
         this.state.boardCursor.setAt(0, originalCursor);
 
-        this.machine.commit("drop");
         this.fallingPiece = undefined;
         this.ticker.stop();
         this.render();
@@ -252,7 +250,8 @@ class ConnectXConsole<T extends StringRenderable> {
     // HUD
     output += "Controls: A = left, D = right, W = drop, Q = quit\n";
     output += "          F = skip to first move, L = skip to last move\n";
-    output += "          ← = undo move, → = redo move\n\n";
+    output += "          ← = undo move, → = redo move\n";
+    output += "          ↓ = previous branch, ↑ = next branch, \n\n";
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     output += `Move: ${timeline.index}/${timeline.length - 1}\n`;
     output += `Timeline branch: ${branchId + 1}/${branchCount}\n`;
@@ -269,8 +268,8 @@ class ConnectXConsole<T extends StringRenderable> {
 }
 
 const game = new ConnectXConsole({
-  boardWidth: 7 * 4,
-  boardHeight: 6 * 4,
+  boardWidth: 7,
+  boardHeight: 6,
   playerTokens: ["🔴", "🟡", "🟣"],
   emptyToken: ".",
   winToken: "🟢",
