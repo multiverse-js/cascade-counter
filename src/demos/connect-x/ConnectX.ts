@@ -13,7 +13,7 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 
 import { TimelineMode, GridPatch2D, ScalarPatch } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
-import { StateHistory } from "../../time/StateHistory";
+import { TimeMachine } from "../../time/TimeMachine";
 import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
 
 
@@ -58,7 +58,7 @@ export type ConnectXAction =
   | Action<"dropPiece">
   | Action<"quit">;
 
-export type ConnectXStateHistory<T> = StateHistory<
+export type ConnectXTimeMachine<T> = TimeMachine<
   ConnectXState<T>,
   ConnectXSnapshot<T>,
   ConnectXPatch<T>
@@ -73,11 +73,11 @@ export type ConnectXTimeline<T> = Timeline<
 // State history factory (engine-agnostic)
 // ---------------------------------------------------------------------------
 
-export function createConnectXStateHistory<T>(
+export function createConnectXTimeMachine<T>(
   state: ConnectXState<T>,
   mode: TimelineMode = "patch"
-): ConnectXStateHistory<T> {
-  return new StateHistory<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>(
+): ConnectXTimeMachine<T> {
+  return new TimeMachine<ConnectXState<T>, ConnectXSnapshot<T>, ConnectXPatch<T>>(
     state,
     { mode },
     {

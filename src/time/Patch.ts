@@ -26,17 +26,19 @@ export function computeGridPatch2D<T>(
     );
   }
 
+  // If arrays are reference-equal, no need to scan
+  if (prevCells === nextCells) return [];
+
   const patches: CellPatch2D<T>[] = [];
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = y * width + x;
-      const prev = prevCells[i];
-      const next = nextCells[i];
+  for (let i = 0; i < expectedSize; i++) {
+    const prev = prevCells[i];
+    const next = nextCells[i];
 
-      if (prev !== next) {
-        patches.push({ x, y, prev, next });
-      }
+    if (prev !== next) {
+      const x = i % width;
+      const y = (i / width) | 0; // faster floor
+      patches.push({ x, y, prev, next });
     }
   }
 
@@ -63,22 +65,21 @@ export function computeGridPatch3D<T>(
     );
   }
 
+  // If arrays are reference-equal, no need to scan
+  if (prevCells === nextCells) return [];
+
   const patches: CellPatch3D<T>[] = [];
-  const layerSize = width * height;
 
-  for (let z = 0; z < depth; z++) {
-    const zOffset = z * layerSize;
-    for (let y = 0; y < height; y++) {
-      const yOffset = y * width;
-      for (let x = 0; x < width; x++) {
-        const i = zOffset + yOffset + x;
-        const prev = prevCells[i];
-        const next = nextCells[i];
-
-        if (prev !== next) {
-          patches.push({ x, y, z, prev, next });
-        }
-      }
+  for (let i = 0; i < expectedSize; i++) {
+    const prev = prevCells[i];
+    const next = nextCells[i];
+    if (prev !== next) {
+      const layerSize = width * height;
+      const z = (i / layerSize) | 0;
+      const rem = i - z * layerSize;
+      const y = (rem / width) | 0;
+      const x = rem - y * width;
+      patches.push({ x, y, z, prev, next });
     }
   }
 
@@ -99,20 +100,20 @@ export function applyGridPatch2D<T>(
   width: number,
   dir: PatchDirection = "forward"
 ): ReadonlyArray<T> {
-  if (cellsPatch.length === 0) {
-    // No changes: you can safely reuse the base reference.
-    return baseCells;
-  }
+  const len = cellsPatch.length;
+  if (len === 0) return baseCells;
 
   const cells = baseCells.slice();
 
   if (dir === "forward") {
-    for (const cell of cellsPatch) {
+    for (let i = 0; i < len; i++) {
+      const cell = cellsPatch[i];
       const index = cell.y * width + cell.x;
       cells[index] = cell.next;
     }
   } else {
-    for (const cell of cellsPatch) {
+    for (let i = 0; i < len; i++) {
+      const cell = cellsPatch[i];
       const index = cell.y * width + cell.x;
       cells[index] = cell.prev;
     }

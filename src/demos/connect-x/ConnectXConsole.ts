@@ -5,9 +5,8 @@ import {
   ConnectXAction,
   ConnectXEngine,
   ConnectXSnapshot,
-  ConnectXTimeline,
-  ConnectXStateHistory,
-  createConnectXStateHistory
+  ConnectXTimeMachine,
+  createConnectXTimeMachine
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
@@ -31,15 +30,13 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly game: ConnectXGame<T>;
   private readonly engine: ConnectXEngine<T>;
   private readonly state: ConnectXState<T>;
-  private readonly history: ConnectXStateHistory<T>;
-  private readonly timeline: ConnectXTimeline<T>;
+  private readonly machine: ConnectXTimeMachine<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.engine = new ConnectXEngine(this.game);
     this.state = this.game.state;
-    this.history = createConnectXStateHistory(this.state);
-    this.timeline = this.history.timeline;
+    this.machine = createConnectXTimeMachine(this.state);
   }
 
   start() {
@@ -48,10 +45,11 @@ class ConnectXConsole<T extends StringRenderable> {
     process.stdin.setEncoding("utf8");
 
     process.stdin.on("data", (key: string) => {
+      if (key === CTRL_C) this.exit();
+
       // raw key press handler
-      const success = this.processRawKey(key);
-      if (success) {
-        const snapshot = this.history.applySnapshot();
+      let snapshot = this.processTimeTravelAction(key);
+      if (snapshot) {
         this.render(snapshot);
         return;
       }
@@ -59,62 +57,59 @@ class ConnectXConsole<T extends StringRenderable> {
       const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
 
-      const quit = this.processAction(action);
-      this.render(); // new frame
-      if (quit) this.exit();
+      snapshot = this.processGameAction(action);
+      if (snapshot) this.render(snapshot);
     });
 
-    this.render(); // initial frames
+    // initial frame
+    const snapshot = this.machine.resolveSnapshot();
+    if (snapshot) this.render(snapshot);
   }
 
-  private processRawKey(key: string): boolean {
+  private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
     switch (key) {
-      case CTRL_C: this.exit();
-      case LEFT_ARROW: return this.timeline.stepBackward();
-      case RIGHT_ARROW: return this.timeline.stepForward();
-      case L_LOWERCASE: return this.timeline.moveToPresent();
-      case F_LOWERCASE: return this.timeline.moveToFirst();
-      default: return false;
+      case LEFT_ARROW: return this.machine.rewind(1);
+      case RIGHT_ARROW: return this.machine.fastForward(1);
+      case F_LOWERCASE: return this.machine.skipToStart();
+      case L_LOWERCASE: return this.machine.skipToEnd();
+      default: return undefined;
     }
   }
 
-  private processAction(action: ConnectXAction): boolean {
-    if (this.state.outcome && action.type !== "quit") return false;
+  private processGameAction(action: ConnectXAction): ConnectXSnapshot<T> | undefined {
+    if (this.state.outcome && action.type !== "quit") return undefined;
 
     switch (action.type) {
       case "quit": {
         this.engine.dispatch(action);
-        return true;
+        this.exit();
+        return undefined;
       }
       case "dropPiece": {
         this.engine.dispatch(action);
-        this.history.recorder.record(this.state); // only piece drops are recorded on the timeline
-        return false;
+        return this.machine.commit();
       }
       case "moveLeft":
       case "moveRight": {
         this.engine.dispatch(action);
-        return false;
+        return this.machine.resolveSnapshot();
       }
     }
   }
 
-  private render(snapshot?: ConnectXSnapshot<T>) {
-    const currentSnapshot = snapshot ?? this.history.resolveSnapshot();
-    if (!currentSnapshot) return;
+  private render(snapshot: ConnectXSnapshot<T>) {
+    process.stdout.write("\x1Bc");
 
-    console.clear();
+    const { board, boardCursor } = this.state;
+    const { cells, outcome, playerCursorIndex } = snapshot;
 
-    const { board, boardCursor, playerCursor } = this.state;
-    const { cells, outcome } = currentSnapshot;
-
-    // cursors: always read from *live* state
+    // always read board cursor from *live* state
     const boardCursorIndex = boardCursor.values[0];
-    const playerCursorIndex = playerCursor.values[0];
     const [width, height] = board.bounds;
     const token = this.game.getPlayerToken(playerCursorIndex);
 
-    let output = `${token}'s Turn\n\n`;
+    let output = `${token}'s Turn`;
+    output += this.machine.timeline.isAtPresent() ? "\n\n" : " (Viewing past move)\n\n";
 
     // cursor row
     for (let x = 0; x < width; x++) {
@@ -132,11 +127,11 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "Controls: A = left, D = right, W = drop, Q = quit\n";
     output += "          F = skip to first move, L = skip to last move\n";
     output += "          ← = undo move, → = redo move\n\n"
-    output += `Move: ${this.timeline.index + 1}/${this.timeline.length}\n`;
+    output += `Move: ${this.machine.timeline.index + 1}/${this.machine.timeline.length}\n`;
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 
-    console.log(output);
+    process.stdout.write(output);
   }
 
   private exit() {

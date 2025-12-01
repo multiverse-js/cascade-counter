@@ -25,19 +25,23 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.cursor;
   }
 
+  getLatestSnapshot(): Snapshot | undefined {
+    return this.latestSnapshot;
+  }
+
   /** Are we currently at the most recent entry? */
   isAtPresent(): boolean {
     return this.cursor === this.entries.length - 1;
   }
 
-  moveToFirst(): boolean {
+  skipToStart(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = 0;
     return true;
   }
 
   /** Move cursor to the latest entry, if any. */
-  moveToPresent(): boolean {
+  skipToEnd(): boolean {
     if (this.entries.length === 0) return false;
     this.cursor = this.entries.length - 1;
     return true;
@@ -80,12 +84,13 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Jump cursor directly to a specific index. Returns true if it moved. */
-  moveTo(targetIndex: number): boolean {
-    if (targetIndex < 0 || targetIndex >= this.entries.length) {
-      return false;
+  skipTo(index: number): boolean {
+    const length = this.entries.length;
+    if (index < 0 || index >= length) {
+      throw new Error(`Timeline.skipTo(): index ${index} is out of bounds [0, ${length - 1}]`);
     }
-    if (this.cursor === targetIndex) return true;
-    this.cursor = targetIndex;
+    if (this.cursor === index) return false;
+    this.cursor = index;
     return true;
   }
 
@@ -204,7 +209,9 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   getCurrentSnapshot(): Snapshot | undefined {
-    if (this.cursor < 0) throw new Error("bad index");
+    if (this.cursor < 0) {
+      throw new Error("Timeline.getCurrentSnapshot(): no current entry (cursor < 0)");
+    }
     return this.getSnapshotAt(this.cursor);
   }
 
