@@ -113,10 +113,16 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   }
 
   rewind(steps: number): Snapshot {
+    if (steps < 0) {
+      throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
+    }
     return this.stepBy(steps, -1);
   }
 
   fastForward(steps: number): Snapshot {
+    if (steps < 0) {
+      throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
+    }
     return this.stepBy(steps, 1);
   }
 
@@ -128,9 +134,6 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   private stepBy(steps: number, stepDelta: 1 | -1): Snapshot {
     if (steps === 0) {
       return this.resolveSnapshot();
-    }
-    if (steps < 0) {
-      throw new Error(`TimeMachine.stepBy(): steps must not be negative (got ${steps})`);
     }
 
     const direction: PatchDirection = stepDelta > 0 ? "forward" : "backward";

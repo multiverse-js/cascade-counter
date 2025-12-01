@@ -167,7 +167,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
 
   getEntry(index: number): TimelineEntry<Snapshot, Patch> {
     if (index < 0 || index >= this.entries.length) {
-      throw new Error(`Timeline.getSnapshotAt(): Index out of range (got ${index})`);
+      throw new Error(`Timeline.getEntry(): Index out of range (got ${index})`);
     }
     return this.entries[index];
   }
