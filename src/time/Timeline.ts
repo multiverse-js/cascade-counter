@@ -1,8 +1,12 @@
 import { TimelineEntry, TimelineMode } from "./types";
 
-export interface TimelineConfig<Snapshot, Patch = Snapshot> {
+export interface TimelineOptions {
   mode: TimelineMode;
   checkpointInterval?: number;
+}
+
+export interface TimelineConfig<Snapshot, Patch = Snapshot>
+  extends TimelineOptions {
   applyPatch?: (base: Snapshot, patch: Patch) => Snapshot;
 }
 
@@ -51,7 +55,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   goTo(index: number): boolean {
     const length = this.entries.length;
     if (index < 0 || index >= length) {
-      throw new Error(`Timeline.skipTo(): index ${index} is out of bounds [0, ${length - 1}]`);
+      throw new Error(`Timeline.goTo(): index ${index} is out of bounds [0, ${length - 1}]`);
     }
     if (this.cursor === index) return false;
     this.cursor = index;
@@ -168,47 +172,68 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     return this.entries[index];
   }
 
-  getSnapshotAt(index: number): Snapshot | undefined {
+  getSnapshotAt(index: number): Snapshot {
     if (index < 0 || index >= this.entries.length) {
-      throw new Error(`Timeline.getSnapshotAt(): Index out of range (got ${index})`);
+      throw new Error(`Timeline.getSnapshotAt(): index ${index} is out of range [0, ${this.entries.length - 1}]`);
     }
+
     const entry = this.entries[index];
+
+    // Fast path: snapshot already stored on this entry
     if (entry.snapshot) {
       return entry.snapshot;
     }
+
+    // In 'full' mode, every entry *must* have a snapshot.
     if (this.config.mode === "full") {
-      return undefined;
-    }
-    if (!this.config.applyPatch) {
       throw new Error(
-        "Timeline.getSnapshotAt() requires applyPatch in 'patch'/'hybrid' modes."
+        `Timeline.getSnapshotAt(): missing snapshot at index ${index} in 'full' mode`
       );
     }
 
-    // find nearest previous snapshot
+    // In 'patch'/'hybrid' modes, we need applyPatch to reconstruct.
+    const applyPatch = this.config.applyPatch;
+    if (!applyPatch) {
+      throw new Error(
+        "Timeline.getSnapshotAt(): applyPatch is required in 'patch'/'hybrid' modes."
+      );
+    }
+
+    // Find nearest previous snapshot
     let baseIndex = index;
     while (baseIndex >= 0 && !this.entries[baseIndex].snapshot) {
       baseIndex--;
     }
+
     if (baseIndex < 0) {
-      return undefined;
+      // This means we have patches before any full snapshot, which violates invariants.
+      throw new Error(
+        `Timeline.getSnapshotAt(): no base snapshot found before index ${index}`
+      );
     }
+
     let currentSnapshot = this.entries[baseIndex].snapshot as Snapshot;
 
+    // Replay patches (and intermediate snapshots) up to 'index'
     for (let i = baseIndex + 1; i <= index; i++) {
       const e = this.entries[i];
       if (e.snapshot) {
         currentSnapshot = e.snapshot;
       } else if (e.patch !== undefined) {
-        currentSnapshot = this.config.applyPatch(currentSnapshot, e.patch);
-        e.snapshot = currentSnapshot; // cache
+        currentSnapshot = applyPatch(currentSnapshot, e.patch);
+        e.snapshot = currentSnapshot; // cache reconstructed snapshot
+      } else {
+        // Patch entry without snapshot or patch would be nonsense.
+        throw new Error(
+          `Timeline.getSnapshotAt(): entry ${i} has neither snapshot nor patch`
+        );
       }
     }
 
     return currentSnapshot;
   }
 
-  getCurrentSnapshot(): Snapshot | undefined {
+  getCurrentSnapshot(): Snapshot {
     if (this.cursor < 0) {
       throw new Error("Timeline.getCurrentSnapshot(): no current entry (cursor < 0)");
     }

@@ -24,13 +24,13 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
 
   constructor(
     state: State,
-    config: TimeMachineOptions = {},
+    options: TimeMachineOptions = {},
     hooks: TimeMachineHooks<State, Snapshot, Patch>,
   ) {
     this.state = state;
     this.hooks = hooks;
 
-    const mode: TimelineMode = config.mode ?? "patch";
+    const mode: TimelineMode = options.mode ?? "patch";
     this.mode = mode;
 
     // In patch/hybrid modes, we *require* createPatch
@@ -44,7 +44,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
 
     this.timeline = new Timeline<Snapshot, Patch>({
       mode,
-      checkpointInterval: config.checkpointInterval,
+      checkpointInterval: options.checkpointInterval,
       // Only wire applyPatch if we're actually using patches
       ...(mode !== "full" && applyPatchToSnapshot && {
         applyPatch: (base, patch) => applyPatchToSnapshot(base, patch),
@@ -85,65 +85,54 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     return snap;
   }
 
-  goToEnd(): Snapshot {
-    if (!this.timeline.goToEnd()) {
-      throw new Error("TimeMachine.skipToEnd(): empty timeline");
-    }
-    return this.applySnapshot()!;
-  }
-
-  goToStart(): Snapshot {
-    if (!this.timeline.goToStart()) {
-      throw new Error("TimeMachine.skipToStart(): empty timeline");
-    }
-    return this.applySnapshot()!;
-  }
-
-  goTo(index: number): Snapshot | undefined {
-    this.timeline.goTo(index);
-
-    return this.applySnapshot();
-  }
-
-  rewind(steps: number): Snapshot | undefined {
-    if (steps === 0) {
-      return this.resolveSnapshot();
-    }
-    if (steps < 0) {
-      throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
-    }
-    return this.stepBy(steps, -1);
-  }
-
-  fastForward(steps: number): Snapshot | undefined {
-    if (steps === 0) {
-      return this.resolveSnapshot();
-    }
-    if (steps < 0) {
-      throw new Error(`TimeMachine.fastForward(): steps must not be negative (got ${steps})`);
-    }
-    return this.stepBy(steps, 1);
-  }
-
   /** Resolve the snapshot to use for the current position (history or live). */
-  resolveSnapshot(): Snapshot | undefined {
+  resolveSnapshot(): Snapshot {
     if (this.timeline.isAtPresent()) {
       return this.hooks.createSnapshot(this.state);
     }
     return this.timeline.getCurrentSnapshot();
   }
 
-  /** Take the snapshot at the current position (if any) and apply it to state. */
-  private applySnapshot(): Snapshot | undefined {
-    const snap = this.timeline.getCurrentSnapshot();
-    if (!snap) return undefined;
-
-    this.hooks.applySnapshotToState(snap, this.state);
-
-    return snap;
+  goToEnd(): Snapshot {
+    if (!this.timeline.goToEnd()) {
+      throw new Error("TimeMachine.goToEnd(): empty timeline");
+    }
+    return this.applySnapshot()!;
   }
 
-  private stepBy(steps: number, stepDelta: 1 | -1): Snapshot | undefined {
+  goToStart(): Snapshot {
+    if (!this.timeline.goToStart()) {
+      throw new Error("TimeMachine.goToStart(): empty timeline");
+    }
+    return this.applySnapshot()!;
+  }
+
+  goTo(index: number): Snapshot {
+    this.timeline.goTo(index);
+    return this.applySnapshot()!;
+  }
+
+  rewind(steps: number): Snapshot {
+    return this.stepBy(steps, -1);
+  }
+
+  fastForward(steps: number): Snapshot {
+    return this.stepBy(steps, 1);
+  }
+
+  seek(steps: number): Snapshot {
+    if (steps > 0) return this.stepBy(steps, 1);
+    return this.stepBy(-steps, -1);
+  }
+
+  private stepBy(steps: number, stepDelta: 1 | -1): Snapshot {
+    if (steps === 0) {
+      return this.resolveSnapshot();
+    }
+    if (steps < 0) {
+      throw new Error(`TimeMachine.stepBy(): steps must not be negative (got ${steps})`);
+    }
+
     const direction: PatchDirection = stepDelta > 0 ? "forward" : "backward";
     const { applyPatchToState, applySnapshotToState, createSnapshot } = this.hooks;
 
@@ -164,11 +153,19 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
 
       // Fallback: apply snapshot at destination index
       const snap = this.timeline.getSnapshotAt(this.timeline.index);
-      if (!snap) return undefined;
       applySnapshotToState(snap, this.state);
     }
 
     // snapshot of current live state after stepping
     return createSnapshot(this.state);
+  }
+
+  /** Take the snapshot at the current position (if any) and apply it to state. */
+  private applySnapshot(): Snapshot {
+    const snap = this.timeline.getCurrentSnapshot();
+
+    this.hooks.applySnapshotToState(snap, this.state);
+
+    return snap;
   }
 }
