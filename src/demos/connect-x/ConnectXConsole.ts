@@ -14,6 +14,7 @@ import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
 import { gridToString } from "../../reality/DenseGrid";
 import { Ticker } from "../../time/Ticker";
+import { clampInt } from "../../utils/MiscUtils";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -188,25 +189,25 @@ class ConnectXConsole<T extends StringRenderable> {
   }
 
   private render(): void {
-    const { board } = this.state;
-    this.renderFrame(board.getCells());
+    this.renderFrame(this.state.board.getCells());
   }
 
   private renderCurrentWithFallingPiece(): void {
-    const { board } = this.state;
-    const [width, height] = board.bounds;
+    if (!this.fallingPiece) {
+      this.render();
+      return;
+    }
 
+    const { board } = this.state;
     // start from current board cells
     const cells = board.getCells().slice() as T[];
+    const [width, height] = board.bounds;
+    const { column, currentY, token } = this.fallingPiece;
 
-    if (this.fallingPiece) {
-      const { column, currentY, token } = this.fallingPiece;
-
-      // clamp & quantize Y to an integer row
-      const y = Math.max(0, Math.min(height - 1, Math.floor(currentY)));
-      const index = y * width + column;
-      cells[index] = token;
-    }
+    // clamp & quantize Y to an integer row
+    const y = clampInt(currentY, 0, height - 1);
+    const index = y * width + column;
+    cells[index] = token;
 
     this.renderFrame(cells);
   }

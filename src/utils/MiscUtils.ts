@@ -1,6 +1,13 @@
 import type { NonEmptyReadonlyArray } from "../soul/types";
 
-export const clampToRange = (v: number, min: number, max: number): number => v < min ? min : v > max ? max : v;
+export const clamp = (v: number, min: number, max: number): number => v < min ? min : v > max ? max : v;
+
+export const clampInt = (value: number, min: number, max: number): number => {
+  const v = Math.floor(value);
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+};
 
 export const posMod = (a: number, m: number) => ((a % m) + m) % m;
 
