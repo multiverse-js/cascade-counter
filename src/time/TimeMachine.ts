@@ -14,7 +14,7 @@ export interface TimeMachineConfig extends TimelineConfig {
   topology?: TimeMachineTopology;
 }
 
-export interface TimeMachineBranch<Snapshot, Patch> {
+export interface TimeMachineBranch<Snapshot, Patch = Snapshot> {
   id: number;
   parentId?: number;
   forkIndex?: number; // Index in parent timeline where this branch was forked
@@ -31,7 +31,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
   private readonly branches = new Map<number, TimeMachineBranch<Snapshot, Patch>>();
 
   private nextBranchId = 1;
-  currentBranchId = 0;
+  private currentBranchId = 0;
 
   constructor(
     state: State,
@@ -75,6 +75,10 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
 
   get branchCount(): number {
     return this.branches.size;
+  }
+
+  get branchId(): number {
+    return this.currentBranchId;
   }
 
   /** Info-only view of branches (no Timeline references). */
@@ -129,7 +133,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     }
 
     const len = ids.length;
-    const nextIndex = (currentIndex + offset % len + len) % len;
+    const nextIndex = ((currentIndex + offset) % len + len) % len;
     const nextId = ids[nextIndex];
 
     return this.switchBranch(nextId);
@@ -162,11 +166,7 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     if (this.topology === "branching" && !timeline.isAtPresent()) {
       const forkIndex = timeline.index;
       const newBranchId = this.nextBranchId++;
-      const newTimeline = Timeline.forkFrom<Snapshot, Patch>(
-        timeline, forkIndex,
-        { mode: this.config.mode, checkpointInterval: this.config.checkpointInterval },
-        { applyPatchToSnapshot: this.hooks.applyPatchToSnapshot },
-      );
+      const newTimeline = Timeline.forkFromExisting<Snapshot, Patch>(timeline, forkIndex);
 
       this.branches.set(newBranchId, {
         id: newBranchId,
@@ -236,21 +236,21 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     return this.applySnapshot();
   }
 
-  rewind(steps: number): Snapshot {
+  stepBackward(steps: number): Snapshot {
     if (steps < 0) {
       throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
     }
     return this.stepBy(steps, -1);
   }
 
-  fastForward(steps: number): Snapshot {
+  stepForward(steps: number): Snapshot {
     if (steps < 0) {
       throw new Error(`TimeMachine.fastForward(): steps must not be negative (got ${steps})`);
     }
     return this.stepBy(steps, 1);
   }
 
-  seek(steps: number): Snapshot {
+  stepRelative(steps: number): Snapshot {
     if (steps > 0) {
       return this.stepBy(steps, 1);
     }

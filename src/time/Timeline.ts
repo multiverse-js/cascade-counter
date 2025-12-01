@@ -10,9 +10,10 @@ export interface TimelineHooks<Snapshot, Patch = Snapshot> {
 }
 
 export class Timeline<Snapshot, Patch = Snapshot> {
-  private entries: TimelineEntry<Snapshot, Patch>[] = [];
-  private config: TimelineConfig;
-  private hooks: TimelineHooks<Snapshot, Patch>;
+  private readonly config: TimelineConfig;
+  private readonly hooks: TimelineHooks<Snapshot, Patch>;
+  private readonly entries: TimelineEntry<Snapshot, Patch>[] = [];
+
   private latestSnapshot?: Snapshot;
   private cursor: number = -1; // -1 = no selection yet
 
@@ -100,8 +101,11 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Push a full snapshot and move cursor to it. */
-  pushFull(snapshot: Snapshot, label?: string, truncateFuture: boolean = true): number {
-    if (truncateFuture) this.truncateFuture();
+  pushFull(snapshot: Snapshot, label?: string): number {
+    // inside pushFull / pushPatch
+    if (this.cursor < this.entries.length - 1) {
+      this.truncateFuture();
+    }
 
     const index = this.entries.length;
     const entry: TimelineEntry<Snapshot, Patch> = {
@@ -118,7 +122,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
   }
 
   /** Push a patch and move cursor to it. */
-  pushPatch(patch: Patch, label?: string, truncate: boolean = true): number {
+  pushPatch(patch: Patch, label?: string): number {
     if (this.config.mode === "full") {
       throw new Error("Timeline.pushPatch() called in 'full' mode.");
     }
@@ -128,10 +132,13 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       );
     }
     if (!this.hooks.applyPatchToSnapshot) {
-      throw new Error("Timeline.pushPatch() requires config.applyPatch.");
+      throw new Error("Timeline.pushPatch() requires hooks.applyPatchToSnapshot.");
     }
 
-    if (truncate) this.truncateFuture();
+    // inside pushFull / pushPatch
+    if (this.cursor < this.entries.length - 1) {
+      this.truncateFuture();
+    }
 
     const index = this.entries.length;
     const nextSnapshot = this.hooks.applyPatchToSnapshot(this.latestSnapshot, patch);
@@ -175,7 +182,9 @@ export class Timeline<Snapshot, Patch = Snapshot> {
 
   getSnapshotAt(index: number): Snapshot {
     if (index < 0 || index >= this.entries.length) {
-      throw new Error(`Timeline.getSnapshotAt(): index ${index} is out of range [0, ${this.entries.length - 1}]`);
+      throw new Error(
+        `Timeline.getSnapshotAt(): index ${index} is out of range [0, ${this.entries.length - 1}]`
+      );
     }
 
     const entry = this.entries[index];
@@ -196,7 +205,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     const applyPatch = this.hooks.applyPatchToSnapshot;
     if (!applyPatch) {
       throw new Error(
-        "Timeline.getSnapshotAt(): applyPatch is required in 'patch'/'hybrid' modes."
+        "Timeline.getSnapshotAt(): applyPatchToSnapshot is required in 'patch'/'hybrid' modes."
       );
     }
 
@@ -252,7 +261,7 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       }
 
       const lastIndex = this.entries.length - 1;
-      this.latestSnapshot = this.getSnapshotAt(lastIndex)!;
+      this.latestSnapshot = this.getSnapshotAt(lastIndex);
     }
   }
 
@@ -278,9 +287,9 @@ export class Timeline<Snapshot, Patch = Snapshot> {
       const entry = source.getEntry(i);
 
       if (entry.snapshot) {
-        clone.pushFull(entry.snapshot, entry.label, false);
+        clone.pushFull(entry.snapshot, entry.label);
       } else if (entry.patch !== undefined) {
-        clone.pushPatch(entry.patch, entry.label, false);
+        clone.pushPatch(entry.patch, entry.label);
       } else {
         throw new Error(
           `Timeline.forkFrom(): entry ${i} has neither snapshot nor patch`,
@@ -289,5 +298,17 @@ export class Timeline<Snapshot, Patch = Snapshot> {
     }
 
     return clone;
+  }
+
+  static forkFromExisting<Snapshot, Patch>(
+    source: Timeline<Snapshot, Patch>,
+    forkIndex: number,
+  ): Timeline<Snapshot, Patch> {
+    return Timeline.forkFrom(
+      source,
+      forkIndex,
+      source.config,
+      source.hooks,
+    );
   }
 }

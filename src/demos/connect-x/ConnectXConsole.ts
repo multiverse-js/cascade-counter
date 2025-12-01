@@ -73,10 +73,10 @@ class ConnectXConsole<T extends StringRenderable> {
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
     switch (key) {
       case LEFT_ARROW: {
-        return this.machine.rewind(1);
+        return this.machine.stepBackward(1);
       }
       case RIGHT_ARROW: {
-        return this.machine.fastForward(1);
+        return this.machine.stepForward(1);
       }
       case UP_ARROW: {
         this.machine.nextBranch();
@@ -130,7 +130,7 @@ class ConnectXConsole<T extends StringRenderable> {
     const boardCursorIndex = boardCursor.values[0];
 
     const token = this.game.getPlayerToken(playerCursor.values[0]);
-    const { timeline, branchCount, currentBranchId } = this.machine;
+    const { timeline, branchCount, branchId } = this.machine;
 
     let output = `${token}'s Turn`;
     output += timeline.isAtPresent() ? "\n\n" : " (Viewing past move)\n\n";
@@ -153,7 +153,7 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "          ← = undo move, → = redo move\n\n"
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     output += `Move: ${timeline.index}/${timeline.length - 1}\n`;
-    output += `Timeline branch: ${currentBranchId + 1}/${branchCount}\n`;
+    output += `Timeline branch: ${branchId + 1}/${branchCount}\n`;
     if (outcome) output += `Outcome: ${this.game.outcomeMessage}\n`;
 
     process.stdout.write(output);
