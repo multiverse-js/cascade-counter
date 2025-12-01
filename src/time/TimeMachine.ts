@@ -37,9 +37,6 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
         applyPatch: (base, patch) => applyPatchToSnapshot(base, patch),
       }),
     });
-
-    // initial snapshot
-    this.commit();
   }
 
   commit(message?: string): Snapshot | undefined {

@@ -54,13 +54,10 @@ class ConnectXConsole<T extends StringRenderable> {
       }
       // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
-      if (!action) return;
-
-      if (this.processGameAction(action)) this.render();
+      if (action && this.processGameAction(action)) this.render();
     });
 
-    // initial frame
-    if (this.machine.resolveSnapshot()) this.render();
+    if (this.machine.commit()) this.render();
   }
 
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
