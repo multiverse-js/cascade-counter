@@ -24,6 +24,10 @@ export class DenseGrid<T> extends BaseGrid<T> {
     }
   }
 
+  getCells(): ReadonlyArray<T> {
+    return this.cells;
+  }
+
   get(coord: Coord): T | undefined {
     const index = this.toIndex(coord);
     if (index < 0) return this.defaultValue; // non-strict case

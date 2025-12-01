@@ -48,22 +48,19 @@ class ConnectXConsole<T extends StringRenderable> {
       if (key === CTRL_C) this.exit();
 
       // raw key press handler
-      let snapshot = this.processTimeTravelAction(key);
-      if (snapshot) {
-        this.render(snapshot);
+      if (this.processTimeTravelAction(key)) {
+        this.render();
         return;
       }
       // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
       if (!action) return;
 
-      snapshot = this.processGameAction(action);
-      if (snapshot) this.render(snapshot);
+      if (this.processGameAction(action)) this.render();
     });
 
     // initial frame
-    const snapshot = this.machine.resolveSnapshot();
-    if (snapshot) this.render(snapshot);
+    if (this.machine.resolveSnapshot()) this.render();
   }
 
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
@@ -79,34 +76,30 @@ class ConnectXConsole<T extends StringRenderable> {
   private processGameAction(action: ConnectXAction): ConnectXSnapshot<T> | undefined {
     if (this.state.outcome && action.type !== "quit") return undefined;
 
+    this.engine.dispatch(action);
+
     switch (action.type) {
       case "quit": {
-        this.engine.dispatch(action);
         this.exit();
         return undefined;
       }
       case "dropPiece": {
-        this.engine.dispatch(action);
         return this.machine.commit();
       }
       case "moveLeft":
       case "moveRight": {
-        this.engine.dispatch(action);
         return this.machine.resolveSnapshot();
       }
     }
   }
 
-  private render(snapshot: ConnectXSnapshot<T>) {
+  private render() {
     process.stdout.write("\x1Bc");
 
-    const { board, boardCursor } = this.state;
-    const { cells, outcome, playerCursorIndex } = snapshot;
-
-    // always read board cursor from *live* state
-    const boardCursorIndex = boardCursor.values[0];
+    const { board, boardCursor, playerCursor, outcome } = this.state;
     const [width, height] = board.bounds;
-    const token = this.game.getPlayerToken(playerCursorIndex);
+    const boardCursorIndex = boardCursor.values[0];
+    const token = this.game.getPlayerToken(playerCursor.values[0]);
 
     let output = `${token}'s Turn`;
     output += this.machine.timeline.isAtPresent() ? "\n\n" : " (Viewing past move)\n\n";
@@ -118,7 +111,7 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "\n";
 
     // board
-    output += gridToString(cells, width, height, {
+    output += gridToString(board.getCells(), width, height, {
       defaultValue: board.defaultValue,
       cellPadding: " "
     }) + "\n";
