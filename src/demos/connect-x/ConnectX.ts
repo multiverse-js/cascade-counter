@@ -190,25 +190,27 @@ export class ConnectXGame<T extends StringRenderable> {
     this.state.playerCursor.incrementAt();
   }
 
-  dropPiece(): boolean {
+  previewDrop(): Coord | null {
     const { boardCursor, board } = this.state;
-
-    const droppedCoord = dropAlongAxis(
+    return dropAlongAxis(
       [boardCursor.values[0], 0],         // (x, y = 0)
       1,                                  // axis 1 = y
       1,                                  // gravity down
       board.bounds,                       // board boundaries
       (coord) => !board.isEmpty(coord)    // blocked if not empty
     );
-    if (!droppedCoord) return false;
+  }
 
-    board.set(droppedCoord, this.getPlayerToken());
-    this.state.lastMove = droppedCoord;
-
+  // And keep the existing dropPiece as “actually mutate board”
+  dropPiece(): boolean {
+    const target = this.previewDrop();
+    if (!target) return false;
+    this.state.board.set(target, this.getPlayerToken());
+    this.state.lastMove = target;
     return true;
   }
 
-  hasToken = (coord: Coord): boolean =>
+  private hasToken = (coord: Coord): boolean =>
     this.state.board.get(coord) === this.getPlayerToken();
 
   isWin(): boolean {

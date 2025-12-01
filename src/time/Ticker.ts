@@ -1,4 +1,4 @@
-export type TickHandler = (dtMs: number, tick: number, now: number) => void;
+export type TickEvent = (dtMs: number, tick: number, now: number) => void;
 
 export interface TickerConfig {
   intervalMs?: number;   // target interval between ticks
@@ -10,7 +10,7 @@ export class Ticker {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastTime: number | null = null;
   private tickCount = 0;
-  private handlers = new Set<TickHandler>();
+  private callbacks = new Set<TickEvent>();
 
   constructor(config: TickerConfig = {}) {
     this.intervalMs = config.intervalMs ?? 1000 / 60; // default ~60fps
@@ -20,9 +20,9 @@ export class Ticker {
   }
 
   /** Register a tick handler. Returns an unsubscribe function. */
-  onTick(handler: TickHandler): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+  onTick(callback: TickEvent): () => void {
+    this.callbacks.add(callback);
+    return () => this.callbacks.delete(callback);
   }
 
   /** Start continuous ticking. */
@@ -75,8 +75,8 @@ export class Ticker {
 
   private fireTick(dtMs: number, now: number): void {
     this.tickCount++;
-    for (const handler of this.handlers) {
-      handler(dtMs, this.tickCount, now);
+    for (const callback of this.callbacks) {
+      callback(dtMs, this.tickCount, now);
     }
   }
 }
