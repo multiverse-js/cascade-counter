@@ -31,7 +31,6 @@ const KEY_MAP = createKeyMap<ConnectXAction>({
 
 interface FallingPiece<T> {
   column: number;   // x index on the board
-  fromY: number;    // starting y (usually 0 or -1)
   toY: number;      // target y cell (integer row)
   currentY: number; // current animated y (can be fractional)
   token: T;         // whatever your player token type is
@@ -171,7 +170,6 @@ class ConnectXConsole<T extends StringRenderable> {
 
         this.fallingPiece = {
           column: targetX,
-          fromY: 0,
           toY: targetY,
           currentY: 0,
           token: this.game.getPlayerToken(), // current player
@@ -251,7 +249,7 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "Controls: A = left, D = right, W = drop, Q = quit\n";
     output += "          F = skip to first move, L = skip to last move\n";
     output += "          ← = undo move, → = redo move\n";
-    output += "          ↓ = previous branch, ↑ = next branch, \n\n";
+    output += "          ↓ = previous branch, ↑ = next branch\n\n";
     output += `Cursor Position: Column ${boardCursorIndex + 1}\n`;
     output += `Move: ${timeline.index}/${timeline.length - 1}\n`;
     output += `Timeline branch: ${branchId + 1}/${branchCount}\n`;
