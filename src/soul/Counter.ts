@@ -427,6 +427,24 @@ export class CascadeCounter {
   }
 
   /**
+   * Peek the digit at `index` offset by `delta`, wrapped within its base.
+   *
+   * - Does **not** mutate the counter.
+   * - Uses the current base at that level.
+   * - Ignores cascade / wrapPolicy; this is purely a local modular view.
+   */
+  peekWrappedAt(index: number, delta: number = 0): number {
+    this._assertValidLevel(index, "peekWrappedAt");
+    assertSafeInteger("peekWrappedAt", "delta", delta);
+
+    const base = this._getBaseAt(index, "peekWrappedAt");
+    const current = this._valuesView[index];
+
+    // local wrap in [0, base-1]
+    return posMod(current + delta, base);
+  }
+
+  /**
    * Converts the current digit vector (or a provided one) into a single
    * linear index using mixed-radix arithmetic.
    *

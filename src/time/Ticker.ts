@@ -1,4 +1,4 @@
-export type TickEvent = (dtMs: number, tick: number, now: number) => void;
+export type TickEvent = (intervalMs: number, tick: number, now: number) => void;
 
 export interface TickerConfig {
   intervalMs?: number;   // target interval between ticks

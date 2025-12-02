@@ -39,8 +39,8 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly engine: ConnectXEngine<T>;
   private readonly state: ConnectXState<T>;
   private readonly machine: ConnectXTimeMachine<T>;
-  private readonly ticker: Ticker;
-  private readonly manager: ConnectXEntityManager<T>;
+  private readonly manager: ConnectXEntityManager<T> = new ConnectXEntityManager();
+  private readonly ticker: Ticker = new Ticker();
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
@@ -51,42 +51,48 @@ class ConnectXConsole<T extends StringRenderable> {
       mode: "patch",
       topology: "branching"
     });
-    this.ticker = new Ticker();
-    this.manager = new ConnectXEntityManager();
+    this.ticker.onTick((intervalMs) => this.tick(intervalMs));
+  }
 
-    this.ticker.onTick((dtMs) => {
-      if (!this.manager.hasEntity()) return;
+  tick(intervalMs: number) {
+    if (!this.manager.hasEntity()) return;
 
-      const { boardCursor } = this.state;
+    const { boardCursor } = this.state;
+    const toDestroy: number[] = [];
 
-      for (const [entity, pos, vel, _, target] of this.manager.view(
-        Position2D,
-        Velocity2D,
-        Token<T>,
-        FallingTarget2D
-      )) {
-        pos.vector = pos.vector.add(vel.vector.scale(dtMs));
+    for (const [entity, pos, vel, _, target] of this.manager.view(
+      Position2D,
+      Velocity2D,
+      Token<T>,
+      FallingTarget2D
+    )) {
+      pos.vector = pos.vector.add(vel.vector.scale(intervalMs));
 
-        if (pos.vector.y >= target.vector.y) {
-          pos.vector = new Vector2(pos.vector.x, target.vector.y);
+      if (pos.vector.y >= target.vector.y) {
+        pos.vector = new Vector2(pos.vector.x, target.vector.y);
 
-          const originalCursor = boardCursor.values[0];
+        const originalCursor = boardCursor.values[0];
+        boardCursor.setAt(0, target.vector.x);
 
-          boardCursor.setAt(0, target.vector.x);
+        this.engine.dispatch({ type: "dropPiece" });
+        this.machine.commit("drop");
 
-          this.engine.dispatch({ type: "dropPiece" });
-          this.machine.commit("drop");
-
-          boardCursor.setAt(0, originalCursor);
-
-          this.manager.destroyEntity(entity);
-          this.ticker.stop();
-          this.render();
-        } else {
-          this.renderCurrentWithFallingPieces();
-        }
+        boardCursor.setAt(0, originalCursor);
+        toDestroy.push(entity);
+      } else {
+        this.renderCurrentWithFallingPieces();
       }
-    });
+    }
+
+    for (const id of toDestroy) {
+      this.manager.destroyEntity(id);
+    }
+    if (!this.manager.hasEntity()) {
+      this.ticker.stop();
+    }
+    if (toDestroy.length > 0) {
+      this.render(); // If anything landed, redraw final state
+    }
   }
 
   start() {
@@ -102,7 +108,6 @@ class ConnectXConsole<T extends StringRenderable> {
         this.render();
         return;
       }
-
       // state machine actions (A/D/W/Q)
       const action = KEY_MAP.match(key.toLowerCase());
       if (action && this.processGameAction(action)) {
@@ -179,14 +184,9 @@ class ConnectXConsole<T extends StringRenderable> {
         if (!target) return undefined;
 
         const [targetX, targetY] = target;
+        const token = this.game.peekPlayerToken(this.manager.size);
 
-        this.manager.addFallingPiece(
-          targetX,
-          0.05,
-          this.game.getPlayerToken(),
-          targetY
-        );
-
+        this.manager.addFallingPiece(targetX, 0.04, token, targetY);
         this.ticker.start();
 
         return undefined;
@@ -229,11 +229,11 @@ class ConnectXConsole<T extends StringRenderable> {
   private renderFrame(cells: ReadonlyArray<T>): void {
     process.stdout.write("\x1Bc");
 
-    const { board, boardCursor, playerCursor, outcome } = this.state;
+    const { board, boardCursor, outcome } = this.state;
     const [width, height] = board.bounds;
     const boardCursorIndex = boardCursor.values[0];
 
-    const token = this.game.getPlayerToken(playerCursor.values[0]);
+    const token = this.game.peekPlayerToken(this.manager.size);
     const { timeline, branchCount, branchId } = this.machine;
 
     let output = `${token}'s Turn`;
@@ -246,11 +246,10 @@ class ConnectXConsole<T extends StringRenderable> {
     output += "\n";
 
     // board (using provided cells)
-    output +=
-      gridToString(cells, width, height, {
-        defaultValue: board.defaultValue,
-        cellPadding: " ",
-      }) + "\n";
+    output += gridToString(cells, width, height, {
+      defaultValue: board.defaultValue,
+      cellPadding: " ",
+    }) + "\n";
 
     // HUD
     output += "Controls: A = left, D = right, W = drop, Q = quit\n";

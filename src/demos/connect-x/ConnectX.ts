@@ -277,6 +277,11 @@ export class ConnectXGame<T extends StringRenderable> {
   getPlayerToken = (index?: number): T =>
     this.settings.playerTokens[index ?? this.state.playerCursor.values[0]];
 
+  peekPlayerToken(offset: number = 0) {
+    const tokenIndex = this.state.playerCursor.peekWrappedAt(0, offset);
+    return this.getPlayerToken(tokenIndex);
+  }
+
   get outcomeMessage(): string {
     switch (this.state.outcome) {
       case "win": return `${this.getPlayerToken()} wins!`;
