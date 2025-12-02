@@ -7,6 +7,7 @@ import {
   ConnectXSnapshot,
   ConnectXTimeMachine,
   createConnectXTimeMachine,
+  ConnectXEntityManager,
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
@@ -39,6 +40,7 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly state: ConnectXState<T>;
   private readonly machine: ConnectXTimeMachine<T>;
   private readonly ticker: Ticker;
+  private readonly manager: ConnectXEntityManager<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
@@ -50,14 +52,14 @@ class ConnectXConsole<T extends StringRenderable> {
       topology: "branching"
     });
     this.ticker = new Ticker();
+    this.manager = new ConnectXEntityManager();
 
     this.ticker.onTick((dtMs) => {
-      const manager = this.game.manager;
-      if (!manager.hasEntity()) return;
+      if (!this.manager.hasEntity()) return;
 
       const { boardCursor } = this.state;
 
-      for (const [entity, pos, vel, _, target] of manager.view(
+      for (const [entity, pos, vel, _, target] of this.manager.view(
         Position2D,
         Velocity2D,
         Token<T>,
@@ -77,7 +79,7 @@ class ConnectXConsole<T extends StringRenderable> {
 
           boardCursor.setAt(0, originalCursor);
 
-          manager.destroyEntity(entity);
+          this.manager.destroyEntity(entity);
           this.ticker.stop();
           this.render();
         } else {
@@ -171,13 +173,20 @@ class ConnectXConsole<T extends StringRenderable> {
         return undefined;
       }
       case "dropPiece": {
-        if (this.game.manager.size >= 4) return;
+        if (this.manager.size >= 4) return;
 
         const target = this.game.previewDrop();
         if (!target) return undefined;
 
         const [targetX, targetY] = target;
-        this.game.addFallingPiece(targetX, 0.05, targetY);
+
+        this.manager.addFallingPiece(
+          targetX,
+          0.05,
+          this.game.getPlayerToken(),
+          targetY
+        );
+
         this.ticker.start();
 
         return undefined;
@@ -191,7 +200,7 @@ class ConnectXConsole<T extends StringRenderable> {
   }
 
   private destroyFallingPieces(): void {
-    this.game.manager.destroyAllEntities();
+    this.manager.destroyAllEntities();
     this.ticker.stop();
   }
 
@@ -204,7 +213,7 @@ class ConnectXConsole<T extends StringRenderable> {
     const [width, height] = board.bounds;
     const cells = board.getCells().slice() as T[];
 
-    for (const [_, pos, token] of this.game.manager.view(
+    for (const [_, pos, token] of this.manager.view(
       Position2D,
       Token<T>
     )) {

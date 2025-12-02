@@ -162,7 +162,7 @@ export function createConnectXTimeMachine<T>(
 }
 
 // ---------------------------------------------------------------------------
-// Core game logic (engine-agnostic)
+// Entity component system (engine-agnostic)
 // ---------------------------------------------------------------------------
 
 export class FallingTarget2D extends Component {
@@ -174,12 +174,26 @@ export class FallingTarget2D extends Component {
   }
 }
 
+export class ConnectXEntityManager<T> extends EntityManager {
+  addFallingPiece(column: number, speed: number, token: T, targetY: number) {
+    const entity = this.createEntity();
+
+    this.addComponent(new Position2D(entity, column, 0));
+    this.addComponent(new Velocity2D(entity, 0, speed));
+    this.addComponent(new Token<T>(entity, token));
+    this.addComponent(new FallingTarget2D(entity, column, targetY));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Core game logic (engine-agnostic)
+// ---------------------------------------------------------------------------
+
 export class ConnectXGame<T extends StringRenderable> {
   static readonly DIRECTION_COORDS = Vector2.toArrays(Vector2.quadrants);
 
   readonly settings: ConnectXSettings<T>;
   readonly state: ConnectXState<T>;
-  readonly manager: EntityManager;
 
   constructor(settings: ConnectXSettings<T>) {
     this.settings = settings;
@@ -198,17 +212,6 @@ export class ConnectXGame<T extends StringRenderable> {
         [settings.playerTokens.length]
       )
     };
-    this.manager = new EntityManager();
-  }
-
-  addFallingPiece(column: number, speed: number, targetY: number) {
-    const manager = this.manager;
-    const entity = manager.createEntity();
-
-    manager.addComponent(new Position2D(entity, column, 0));
-    manager.addComponent(new Velocity2D(entity, 0, speed));
-    manager.addComponent(new Token<T>(entity, this.getPlayerToken()));
-    manager.addComponent(new FallingTarget2D(entity, column, targetY));
   }
 
   moveCursor(direction: 1 | -1): void {
