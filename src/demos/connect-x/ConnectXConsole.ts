@@ -3,18 +3,20 @@ import {
   ConnectXState,
   ConnectXSettings,
   ConnectXAction,
-  ConnectXPiece,
   ConnectXEngine,
   ConnectXSnapshot,
   ConnectXTimeMachine,
-  createConnectXTimeMachine
+  createConnectXTimeMachine,
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
 import { gridToString } from "../../reality/DenseGrid";
 import { Ticker } from "../../time/Ticker";
+import { Position2D, Velocity2D, Token } from "../../space/Components";
+import { Vector2 } from "../../space/Vector2";
 import { clampInt } from "../../utils/MiscUtils";
+import { FallingTarget2D } from "./ConnectX";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -38,8 +40,6 @@ class ConnectXConsole<T extends StringRenderable> {
   private readonly machine: ConnectXTimeMachine<T>;
   private readonly ticker: Ticker;
 
-  private fallingPiece: ConnectXPiece<T> | undefined;
-
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
     this.engine = new ConnectXEngine(this.game);
@@ -51,33 +51,38 @@ class ConnectXConsole<T extends StringRenderable> {
     });
     this.ticker = new Ticker();
 
-    const speed = 0.05; // rows per ms
-
-    // Single tick handler for the life of the console
     this.ticker.onTick((dtMs) => {
-      if (!this.fallingPiece) return;
+      const manager = this.game.manager;
+      if (!manager.hasEntity()) return;
 
-      this.fallingPiece.currentY += speed * dtMs;
+      const { boardCursor } = this.state;
 
-      if (this.fallingPiece.currentY >= this.fallingPiece.targetY) {
-        this.fallingPiece.currentY = this.fallingPiece.targetY;
+      for (const [entity, pos, vel, _, target] of manager.view(
+        Position2D,
+        Velocity2D,
+        Token<T>,
+        FallingTarget2D
+      )) {
+        pos.vector = pos.vector.add(vel.vector.scale(dtMs));
 
-        const originalCursor = this.state.boardCursor.values[0];
+        if (pos.vector.y >= target.vector.y) {
+          pos.vector = new Vector2(pos.vector.x, target.vector.y);
 
-        // Temporarily set cursor to the latched column
-        this.state.boardCursor.setAt(0, this.fallingPiece.column);
+          const originalCursor = boardCursor.values[0];
 
-        // Let the engine/game handle win/draw/switchPlayer logic
-        this.engine.dispatch({ type: "dropPiece" });
-        this.machine.commit("drop");
+          boardCursor.setAt(0, target.vector.x);
 
-        this.state.boardCursor.setAt(0, originalCursor);
+          this.engine.dispatch({ type: "dropPiece" });
+          this.machine.commit("drop");
 
-        this.fallingPiece = undefined;
-        this.ticker.stop();
-        this.render();
-      } else {
-        this.renderCurrentWithFallingPiece();
+          boardCursor.setAt(0, originalCursor);
+
+          manager.destroyEntity(entity);
+          this.ticker.stop();
+          this.render();
+        } else {
+          this.renderCurrentWithFallingPieces();
+        }
       }
     });
   }
@@ -110,32 +115,42 @@ class ConnectXConsole<T extends StringRenderable> {
   private processTimeTravelAction(key: string): ConnectXSnapshot<T> | undefined {
     switch (key) {
       case LEFT_ARROW: {
-        this.cancelAnimation();
-        return this.machine.stepBackward(1);
+        this.destroyFallingPieces();
+        return this.machine.stepBackward();
       }
       case RIGHT_ARROW: {
-        this.cancelAnimation();
-        return this.machine.stepForward(1);
+        this.destroyFallingPieces();
+        return this.machine.stepForward();
       }
       case UP_ARROW: {
-        this.cancelAnimation();
-        this.machine.nextBranch();
-        return this.machine.goToEnd();
+        const before = this.machine.branchId;
+        this.machine.previousBranch();
+
+        if (this.machine.branchId !== before) {
+          this.destroyFallingPieces();
+          return this.machine.goToEnd();
+        }
+        return undefined;
       }
       case DOWN_ARROW: {
-        this.cancelAnimation();
-        this.machine.previousBranch();
-        return this.machine.goToEnd();
+        const before = this.machine.branchId;
+        this.machine.nextBranch();
+
+        if (this.machine.branchId !== before) {
+          this.destroyFallingPieces();
+          return this.machine.goToEnd();
+        }
+        return undefined;
       }
       case F_LOWERCASE: {
-        this.cancelAnimation();
+        this.destroyFallingPieces();
         if (this.machine.timeline.length <= 1) {
           return undefined; // no moves yet; no-op
         }
         return this.machine.goTo(1);
       }
       case L_LOWERCASE: {
-        this.cancelAnimation();
+        this.destroyFallingPieces();
         if (this.machine.timeline.length <= 1) {
           return undefined; // no moves yet; no-op
         }
@@ -150,29 +165,22 @@ class ConnectXConsole<T extends StringRenderable> {
 
     switch (action.type) {
       case "quit": {
+        this.destroyFallingPieces();
         this.engine.dispatch(action);
         this.exit();
         return undefined;
       }
       case "dropPiece": {
-        // If already animating a piece, ignore extra drops
-        if (this.fallingPiece) return undefined;
+        if (this.game.manager.size >= 4) return;
 
         const target = this.game.previewDrop();
         if (!target) return undefined;
 
         const [targetX, targetY] = target;
-
-        this.fallingPiece = {
-          column: targetX,
-          targetY,
-          currentY: 0,
-          token: this.game.getPlayerToken(),
-        };
-
-        // Ensure we only attach the tick handler once (do this in constructor ideally)
+        this.game.addFallingPiece(targetX, 0.05, targetY);
         this.ticker.start();
-        return undefined; // don't dispatch / commit yet
+
+        return undefined;
       }
       case "moveLeft":
       case "moveRight": {
@@ -182,9 +190,8 @@ class ConnectXConsole<T extends StringRenderable> {
     }
   }
 
-  private cancelAnimation(): void {
-    if (!this.fallingPiece) return;
-    this.fallingPiece = undefined;
+  private destroyFallingPieces(): void {
+    this.game.manager.destroyAllEntities();
     this.ticker.stop();
   }
 
@@ -192,22 +199,20 @@ class ConnectXConsole<T extends StringRenderable> {
     this.renderFrame(this.state.board.getCells());
   }
 
-  private renderCurrentWithFallingPiece(): void {
-    if (!this.fallingPiece) {
-      this.render();
-      return;
-    }
-
+  private renderCurrentWithFallingPieces(): void {
     const { board } = this.state;
-    // start from current board cells
-    const cells = board.getCells().slice() as T[];
     const [width, height] = board.bounds;
-    const { column, currentY, token } = this.fallingPiece;
+    const cells = board.getCells().slice() as T[];
 
-    // clamp & quantize Y to an integer row
-    const y = clampInt(currentY, 0, height - 1);
-    const index = y * width + column;
-    cells[index] = token;
+    for (const [_, pos, token] of this.game.manager.view(
+      Position2D,
+      Token<T>
+    )) {
+      const y = clampInt(pos.vector.y, 0, height - 1);
+      const index = y * width + pos.vector.x;
+
+      cells[index] = token.value;
+    }
 
     this.renderFrame(cells);
   }

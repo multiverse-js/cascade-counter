@@ -238,14 +238,14 @@ export class TimeMachine<State, Snapshot, Patch = Snapshot> {
     return this.applySnapshot();
   }
 
-  stepBackward(steps: number): Snapshot {
+  stepBackward(steps: number = 1): Snapshot {
     if (steps < 0) {
       throw new Error(`TimeMachine.rewind(): steps must not be negative (got ${steps})`);
     }
     return this.stepBy(steps, -1);
   }
 
-  stepForward(steps: number): Snapshot {
+  stepForward(steps: number = 1): Snapshot {
     if (steps < 0) {
       throw new Error(`TimeMachine.fastForward(): steps must not be negative (got ${steps})`);
     }

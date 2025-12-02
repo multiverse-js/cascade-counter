@@ -2,11 +2,13 @@ import { StringRenderable } from "../../soul/types";
 import { CascadeCounter } from "../../soul/Counter";
 import { offsetAxis } from "../../soul/Axis";
 
-import { Coord } from "../../space/types";
-import { dropAlongAxis, findLine } from "../../space/Space";
+import { Coord, EntityId } from "../../space/types";
 import { Vector2 } from "../../space/Vector2";
+import { dropAlongAxis, findLine } from "../../space/Space";
+import { Component, Position2D, Velocity2D, Token } from "../../space/Components";
 
 import { DenseGrid } from "../../reality/DenseGrid";
+import { EntityManager } from "../../reality/EntityManager";
 
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
@@ -14,7 +16,13 @@ import { Engine, createActionReducer } from "../../mind/Engine";
 import { GridPatch2D, ScalarPatch } from "../../time/types";
 import { Timeline } from "../../time/Timeline";
 import { TimeMachine, TimeMachineConfig } from "../../time/TimeMachine";
-import { computeGridPatch2D, computeScalarPatch, applyGridPatch2D, applyScalarPatch } from "../../time/Patch";
+
+import {
+  computeGridPatch2D,
+  computeScalarPatch,
+  applyGridPatch2D,
+  applyScalarPatch
+} from "../../time/Patch";
 
 
 export type ConnectXSettings<T> = {
@@ -49,13 +57,6 @@ export type ConnectXPatch<T> = {
   readonly playerCursorIndex?: ScalarPatch<number>;
   readonly outcome?: ScalarPatch<ConnectXOutcome>;
 };
-
-export type ConnectXPiece<T> = {
-  readonly column: number;   // x index on the board
-  readonly targetY: number;  // target y cell (integer row)
-  readonly token: T;         // whatever the player token type is
-  currentY: number;          // current animated y (can be fractional)
-}
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
 
@@ -164,11 +165,21 @@ export function createConnectXTimeMachine<T>(
 // Core game logic (engine-agnostic)
 // ---------------------------------------------------------------------------
 
+export class FallingTarget2D extends Component {
+  vector: Vector2;
+
+  constructor(entity: EntityId, x: number, y: number) {
+    super(entity);
+    this.vector = new Vector2(x, y);
+  }
+}
+
 export class ConnectXGame<T extends StringRenderable> {
   static readonly DIRECTION_COORDS = Vector2.toArrays(Vector2.quadrants);
 
   readonly settings: ConnectXSettings<T>;
   readonly state: ConnectXState<T>;
+  readonly manager: EntityManager;
 
   constructor(settings: ConnectXSettings<T>) {
     this.settings = settings;
@@ -187,6 +198,17 @@ export class ConnectXGame<T extends StringRenderable> {
         [settings.playerTokens.length]
       )
     };
+    this.manager = new EntityManager();
+  }
+
+  addFallingPiece(column: number, speed: number, targetY: number) {
+    const manager = this.manager;
+    const entity = manager.createEntity();
+
+    manager.addComponent(new Position2D(entity, column, 0));
+    manager.addComponent(new Velocity2D(entity, 0, speed));
+    manager.addComponent(new Token<T>(entity, this.getPlayerToken()));
+    manager.addComponent(new FallingTarget2D(entity, column, targetY));
   }
 
   moveCursor(direction: 1 | -1): void {
@@ -208,12 +230,13 @@ export class ConnectXGame<T extends StringRenderable> {
     );
   }
 
-  // And keep the existing dropPiece as “actually mutate board”
   dropPiece(): boolean {
     const target = this.previewDrop();
     if (!target) return false;
+
     this.state.board.set(target, this.getPlayerToken());
     this.state.lastMove = target;
+
     return true;
   }
 

@@ -47,3 +47,5 @@ export type PatchDirection = "forward" | "backward";
 export type StringRenderable = {
   toString(): string
 };
+
+export type EntityId = number;
