@@ -6,18 +6,16 @@ import {
   ConnectXEngine,
   ConnectXSnapshot,
   ConnectXTimeMachine,
-  createConnectXTimeMachine,
-  ConnectXEntityManager,
+  createConnectXTimeMachine
 } from "./ConnectX";
 
 import { StringRenderable } from "../../soul/types";
 import { createKeyMap } from "../../mind/Engine";
 import { gridToString } from "../../reality/DenseGrid";
 import { Ticker } from "../../time/Ticker";
-import { Position2D, Velocity2D, Token } from "../../space/Components";
-import { Vector2 } from "../../space/Vector2";
+import { Position2D, Token } from "../../space/Components";
 import { clampInt } from "../../utils/MiscUtils";
-import { FallingTarget2D } from "./ConnectX";
+import { EntityManager } from "../../reality/EntityManager";
 
 const CTRL_C = "\u0003";
 const LEFT_ARROW = "\u001b[D";
@@ -34,13 +32,16 @@ const KEY_MAP = createKeyMap<ConnectXAction>({
   q: { type: "quit" }
 });
 
+import { FallingPiecesAnimation } from "./ConnectX";
+
 class ConnectXConsole<T extends StringRenderable> {
   private readonly game: ConnectXGame<T>;
   private readonly engine: ConnectXEngine<T>;
   private readonly state: ConnectXState<T>;
   private readonly machine: ConnectXTimeMachine<T>;
-  private readonly manager: ConnectXEntityManager<T> = new ConnectXEntityManager();
-  private readonly ticker: Ticker = new Ticker();
+  private readonly manager: EntityManager;
+  private readonly ticker: Ticker;
+  private readonly animation: FallingPiecesAnimation<T>;
 
   constructor(settings: ConnectXSettings<T>) {
     this.game = new ConnectXGame(settings);
@@ -51,48 +52,27 @@ class ConnectXConsole<T extends StringRenderable> {
       mode: "patch",
       topology: "branching"
     });
-    this.ticker.onTick((intervalMs) => this.tick(intervalMs));
-  }
 
-  tick(intervalMs: number) {
-    if (!this.manager.hasEntity()) return;
+    this.manager = new EntityManager();
+    this.ticker = new Ticker();
 
-    const { boardCursor } = this.state;
-    const toDestroy: number[] = [];
+    this.animation = new FallingPiecesAnimation(
+      { ticker: this.ticker, manager: this.manager, speed: 0.04 },
+      {
+        onFrame: () => this.renderCurrentWithFallingPieces(),
+        onPieceLanded: ({ target }) => {
+          const { boardCursor } = this.state;
+          const originalCursor = boardCursor.values[0];
 
-    for (const [entity, pos, vel, _, target] of this.manager.view(
-      Position2D,
-      Velocity2D,
-      Token<T>,
-      FallingTarget2D
-    )) {
-      pos.vector = pos.vector.add(vel.vector.scale(intervalMs));
+          boardCursor.setAt(0, target.vector.x);
+          this.engine.dispatch({ type: "dropPiece" });
+          this.machine.commit("drop");
+          boardCursor.setAt(0, originalCursor);
 
-      if (pos.vector.y >= target.vector.y) {
-        pos.vector = new Vector2(pos.vector.x, target.vector.y);
-
-        const originalCursor = boardCursor.values[0];
-        boardCursor.setAt(0, target.vector.x);
-
-        this.engine.dispatch({ type: "dropPiece" });
-        this.machine.commit("drop");
-
-        boardCursor.setAt(0, originalCursor);
-        toDestroy.push(entity);
-      } else {
-        this.renderCurrentWithFallingPieces();
+          this.render();
+        }
       }
-    }
-
-    for (const id of toDestroy) {
-      this.manager.destroyEntity(id);
-    }
-    if (!this.manager.hasEntity()) {
-      this.ticker.stop();
-    }
-    if (toDestroy.length > 0) {
-      this.render(); // If anything landed, redraw final state
-    }
+    );
   }
 
   start() {
@@ -178,17 +158,13 @@ class ConnectXConsole<T extends StringRenderable> {
         return undefined;
       }
       case "dropPiece": {
-        if (this.manager.size >= 4) return;
-
         const target = this.game.previewDrop();
         if (!target) return undefined;
 
         const [targetX, targetY] = target;
         const token = this.game.peekPlayerToken(this.manager.size);
 
-        this.manager.addFallingPiece(targetX, 0.04, token, targetY);
-        this.ticker.start();
-
+        this.animation.addPiece(targetX, targetY, token);
         return undefined;
       }
       case "moveLeft":

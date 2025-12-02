@@ -9,6 +9,7 @@ import { Component, Position2D, Velocity2D, Token } from "../../space/Components
 
 import { DenseGrid } from "../../reality/DenseGrid";
 import { EntityManager } from "../../reality/EntityManager";
+import { Animation, AnimationConfig, AnimationHooks } from "../../reality/Animation";
 
 import { Action } from "../../mind/types";
 import { Engine, createActionReducer } from "../../mind/Engine";
@@ -57,6 +58,13 @@ export type ConnectXPatch<T> = {
   readonly playerCursorIndex?: ScalarPatch<number>;
   readonly outcome?: ScalarPatch<ConnectXOutcome>;
 };
+
+export type ConnectXFallingPiece<T> = {
+  readonly entity: EntityId;
+  readonly position: Position2D;
+  readonly target: Target2D;
+  readonly token: Token<T>;
+}
 
 export type ConnectXOutcome = "win" | "draw" | "quit";
 
@@ -165,7 +173,7 @@ export function createConnectXTimeMachine<T>(
 // Entity component system (engine-agnostic)
 // ---------------------------------------------------------------------------
 
-export class FallingTarget2D extends Component {
+export class Target2D extends Component {
   vector: Vector2;
 
   constructor(entity: EntityId, x: number, y: number) {
@@ -174,14 +182,93 @@ export class FallingTarget2D extends Component {
   }
 }
 
-export class ConnectXEntityManager<T> extends EntityManager {
-  addFallingPiece(column: number, speed: number, token: T, targetY: number) {
-    const entity = this.createEntity();
+export interface FallingPiecesAnimationConfig extends AnimationConfig {
+  manager: EntityManager;
+  speed?: number; // rows per ms (e.g. 0.04)
+}
 
-    this.addComponent(new Position2D(entity, column, 0));
-    this.addComponent(new Velocity2D(entity, 0, speed));
-    this.addComponent(new Token<T>(entity, token));
-    this.addComponent(new FallingTarget2D(entity, column, targetY));
+export interface FallingPiecesAnimationHooks<T> extends AnimationHooks {
+  onPieceLanded?: (ctx: ConnectXFallingPiece<T>) => void;
+}
+
+export class FallingPiecesAnimation<T> extends Animation {
+  private readonly manager: EntityManager;
+  private readonly speed: number;
+  protected readonly hooks: FallingPiecesAnimationHooks<T>;
+
+  constructor(
+    config: FallingPiecesAnimationConfig,
+    hooks: FallingPiecesAnimationHooks<T> = {}
+  ) {
+    super(config, hooks); // base stores hooks as AnimationHooks
+
+    this.manager = config.manager;
+    this.speed = config.speed ?? 0.04;
+    this.hooks = hooks;
+  }
+
+  /** Spawn a new falling piece entity. */
+  addPiece(column: number, targetY: number, tokenValue: T): void {
+    const e = this.manager.createEntity();
+
+    this.manager.addComponent(new Position2D(e, column, 0));
+    this.manager.addComponent(new Velocity2D(e, 0, this.speed));
+    this.manager.addComponent(new Token<T>(e, tokenValue));
+    this.manager.addComponent(new Target2D(e, column, targetY));
+
+    // Ensure animation is running
+    this.start();
+  }
+
+  /** Cancel all pieces immediately and stop animating. */
+  cancel(): void {
+    this.manager.destroyAllEntities();
+    this.stop();
+  }
+
+  /** Main ECS update loop, called once per tick by base Animation. */
+  protected update(dtMs: number, _tick: number, _now: number): void {
+    if (!this.manager.hasEntity()) {
+      // No pieces → nothing to animate
+      this.stop();
+      return;
+    }
+
+    const toDestroy: EntityId[] = [];
+
+    for (const [entity, pos, vel, token, target] of this.manager.view(
+      Position2D,
+      Velocity2D,
+      Token<T>,
+      Target2D,
+    )) {
+      // Integrate velocity
+      pos.vector = pos.vector.add(vel.vector.scale(dtMs));
+
+      // Still falling?
+      if (pos.vector.y < target.vector.y) {
+        continue; // IMPORTANT: don't bail out of the whole update
+      }
+
+      // Snap to target row
+      pos.vector = new Vector2(pos.vector.x, target.vector.y);
+      toDestroy.push(entity);
+
+      this.hooks.onPieceLanded?.({
+        entity,
+        position: pos,
+        target,
+        token,
+      });
+    }
+
+    for (const id of toDestroy) {
+      this.manager.destroyEntity(id);
+    }
+
+    if (!this.manager.hasEntity()) {
+      this.stop();
+    }
   }
 }
 
